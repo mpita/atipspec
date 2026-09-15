@@ -1,0 +1,31 @@
+# Include from .gitlab-ci.yml. Configure ATIPSPEC_PACKAGE to an immutable wheel
+# or pinned released version. No signing keys in this job.
+atipspec-local:
+  image: python:3.12
+  timeout: 20m
+  variables:
+    GIT_DEPTH: "0"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+  script:
+    - test -n "$ATIPSPEC_PACKAGE"
+    - python -m pip install "$ATIPSPEC_PACKAGE"
+    - |
+      python -I - <<'PY'
+      from atipspec.project import Project
+      from atipspec.verify import verify_delivery
+      from atipspec.check import check_delivery
+      project = Project.find()
+      failed = False
+      for slug in project.list_deliveries():
+          failed |= bool(verify_delivery(project, slug))
+          report = check_delivery(project, slug)
+          print(report.render())
+          failed |= bool(report.errors)
+      raise SystemExit(1 if failed else 0)
+      PY
+  artifacts:
+    when: always
+    expire_in: 30 days
+    paths:
+      - .atipspec/deliveries/*/evidence/

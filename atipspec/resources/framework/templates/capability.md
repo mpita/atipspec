@@ -1,0 +1,7 @@
+---
+capability: {{capability}}
+---
+
+# {{capability}}
+
+## Requirements

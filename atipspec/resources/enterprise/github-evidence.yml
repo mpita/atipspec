@@ -1,0 +1,51 @@
+# Copy to .github/workflows/atipspec-evidence.yml after pinning the trusted package.
+# Provider mode: this workflow runs the candidate's Verify commands WITHOUT any
+# signing key and attests the evidence it produced. The protected acceptance
+# worker later verifies the attestation with `gh attestation verify` against
+# this workflow's identity, and reads the PR approvals live.
+name: AtipSpec evidence
+on: [pull_request, workflow_dispatch]
+permissions:
+  contents: read
+  id-token: write
+  attestations: write
+jobs:
+  evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install trusted verifier
+        env:
+          ATIPSPEC_PACKAGE: ${{ vars.ATIPSPEC_PACKAGE }}
+        run: |
+          test -n "$ATIPSPEC_PACKAGE"
+          python -m pip install "$ATIPSPEC_PACKAGE"
+      - name: Verify active deliveries
+        run: |
+          python -I - <<'PY'
+          from atipspec.project import Project
+          from atipspec.verify import verify_delivery
+          project = Project.find()
+          failed = False
+          for slug in project.list_deliveries():
+              failed |= bool(verify_delivery(project, slug))
+          raise SystemExit(1 if failed else 0)
+          PY
+      - name: Attest the evidence records
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: '.atipspec/deliveries/*/evidence/*.json'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: atipspec-evidence
+          path: .atipspec/deliveries/*/evidence/
+          include-hidden-files: true
+          retention-days: 30

@@ -1,0 +1,144 @@
+site_name: AtipSpec
+site_description: Spec-driven delivery for LLM coding clients, with a deterministic gate.
+site_url: https://mpita.github.io/atipspec/
+repo_url: https://github.com/mpita/atipspec
+repo_name: mpita/atipspec
+edit_uri: edit/main/docs/
+copyright: AtipSpec
+
+theme:
+  name: material
+  language: en
+  icon:
+    repo: fontawesome/brands/github
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - navigation.footer
+    - navigation.indexes
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.tabs.link
+    - toc.follow
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: teal
+      accent: indigo
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: teal
+      accent: indigo
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+
+plugins:
+  - search
+  - i18n:
+      docs_structure: suffix
+      fallback_to_default: true
+      reconfigure_material: true
+      languages:
+        - locale: en
+          default: true
+          name: English
+          build: true
+        - locale: es
+          name: Español
+          build: true
+          nav_translations:
+            Home: Inicio
+            Start here: Empieza aquí
+            Installation: Instalación
+            Quick start: Primeros pasos
+            How it works: Cómo funciona
+            The flow: El flujo
+            Clients: Clientes
+            Teams and scale: Equipos y escala
+            Enterprise acceptance: Aceptación empresarial
+            Reference: Referencia
+            Contract rules: Reglas del contrato
+            Writing criteria: Escribir criterios
+            Artifacts: Artefactos
+            Configuration: Configuración
+            Project layout: Estructura del proyecto
+            Design: Diseño
+            Contributing: Contribuir
+        - locale: pt
+          name: Português
+          build: true
+          nav_translations:
+            Home: Início
+            Start here: Comece aqui
+            Installation: Instalação
+            Quick start: Primeiros passos
+            How it works: Como funciona
+            The flow: O fluxo
+            Clients: Clientes
+            Teams and scale: Equipes e escala
+            Enterprise acceptance: Aceitação empresarial
+            Reference: Referência
+            Contract rules: Regras do contrato
+            Writing criteria: Escrever critérios
+            Artifacts: Artefatos
+            Configuration: Configuração
+            Project layout: Estrutura do projeto
+            Design: Design
+            Contributing: Contribuir
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.snippets
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+
+nav:
+  - Home: index.md
+  - Start here:
+      - Installation: getting-started/installation.md
+      - Quick start: getting-started/quick-start.md
+      - How it works: getting-started/how-it-works.md
+  - The flow:
+      - flow/index.md
+      - explore: flow/explore.md
+      - spec: flow/spec.md
+      - fix: flow/fix.md
+      - plan: flow/plan.md
+      - build: flow/build.md
+      - review: flow/review.md
+      - deliver: flow/deliver.md
+      - contract: flow/contract.md
+      - curate: flow/curate.md
+  - Clients: clients.md
+  - Teams and scale: teams.md
+  - Enterprise acceptance: enterprise.md
+  - Reference:
+      - CLI: reference/cli.md
+      - Artifacts: reference/artifacts.md
+      - Contract rules: reference/contract-rules.md
+      - Writing criteria: reference/spec-quality.md
+      - Configuration: reference/configuration.md
+      - Project layout: reference/layout.md
+  - Design: design.md
+  - Contributing: contributing.md

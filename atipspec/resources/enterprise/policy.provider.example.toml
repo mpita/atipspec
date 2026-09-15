@@ -1,0 +1,28 @@
+# TEMPLATE ONLY, provider mode. Install OUTSIDE the candidate repository in an
+# administrator-controlled path and pin its SHA-256 in protected CI.
+#
+# Provider mode needs no human signing keys and no collector key: the protected
+# worker reads the PR/MR approvals live with a read-only token, and the CI
+# evidence carries a GitHub artifact attestation verified with the pinned `gh`.
+# Risk exceptions (deferring a blocker or major finding) are not available in
+# this mode: fix the finding, or use ssh mode.
+schema = 2
+version = "company-provider-1"
+mode = "provider"
+repository = "your-organization/your-repository"
+contract_rules = ['require-command "python -m unittest discover"']
+
+[provider]
+kind = "github"                   # gitlab reads approvals too; attestations are GitHub-only today
+api_url = "https://api.github.com"
+repository = "your-organization/your-repository"
+
+[provider.roles]
+product = ["product-owner-login"]
+engineering = ["architect-login"]
+qa = ["qa-login"]
+
+[attestation]
+tool = "gh"                       # or the absolute path of the pinned binary on the protected worker
+owner = "your-organization"
+signer_workflow = "your-organization/your-repository/.github/workflows/atipspec-evidence.yml"

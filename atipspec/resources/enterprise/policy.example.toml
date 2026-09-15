@@ -1,0 +1,47 @@
+# TEMPLATE ONLY. Replace keys and identities, then install OUTSIDE the candidate
+# repository in an administrator-controlled path. Pin its SHA-256 in protected CI.
+schema = 1
+version = "company-1"
+repository = "your-organization/your-repository"
+contract_rules = ['require-command "python -m unittest discover"']
+
+[[signers]]
+identity = "product-owner@example.com"
+roles = ["product"]
+public_key = "REPLACE_WITH_ENROLLED_SSH_PUBLIC_KEY"
+
+[[signers]]
+identity = "architect@example.com"
+roles = ["engineering"]
+public_key = "REPLACE_WITH_ENROLLED_SSH_PUBLIC_KEY"
+
+[[signers]]
+identity = "qa@example.com"
+roles = ["qa"]
+public_key = "REPLACE_WITH_ENROLLED_SSH_PUBLIC_KEY"
+
+[[signers]]
+identity = "risk-owner@example.com"
+roles = ["risk"]
+public_key = "REPLACE_WITH_ENROLLED_SSH_PUBLIC_KEY"
+
+[[signers]]
+identity = "ci-producer"
+roles = ["ci"]
+public_key = "REPLACE_WITH_ENROLLED_SERVICE_PUBLIC_KEY"
+
+[[signers]]
+identity = "approval-collector"
+roles = ["collector"]
+public_key = "REPLACE_WITH_ENROLLED_SERVICE_PUBLIC_KEY"
+
+[provider]
+kind = "github" # Or gitlab; GitLab approvals API availability depends on your tier.
+api_url = "https://api.github.com" # GitLab: https://gitlab.com/api/v4
+repository = "your-organization/your-repository"
+
+[provider.roles]
+product = ["product-owner-login"]
+engineering = ["architect-login"]
+qa = ["qa-login"]
+risk = ["risk-owner-login"]

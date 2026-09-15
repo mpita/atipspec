@@ -1,0 +1,46 @@
+# Copy to .github/workflows/atipspec-local.yml after pinning the trusted package.
+# These checks run untrusted candidate commands WITHOUT signing credentials.
+name: AtipSpec local verification
+on: [pull_request, workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install trusted verifier
+        env:
+          ATIPSPEC_PACKAGE: ${{ vars.ATIPSPEC_PACKAGE }}
+        run: |
+          test -n "$ATIPSPEC_PACKAGE"
+          python -m pip install "$ATIPSPEC_PACKAGE"
+      - name: Verify active deliveries
+        run: |
+          python -I - <<'PY'
+          from atipspec.project import Project
+          from atipspec.verify import verify_delivery
+          from atipspec.check import check_delivery
+          project = Project.find()
+          failed = False
+          for slug in project.list_deliveries():
+              failed |= bool(verify_delivery(project, slug))
+              report = check_delivery(project, slug)
+              print(report.render())
+              failed |= bool(report.errors)
+          raise SystemExit(1 if failed else 0)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: atipspec-local-evidence
+          path: .atipspec/deliveries/*/evidence/
+          include-hidden-files: true
+          retention-days: 30
