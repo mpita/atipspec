@@ -14,6 +14,7 @@ import uuid
 from . import __version__
 from pathlib import Path
 import subprocess
+import signal
 import time
 
 from .delivery import parse_plan
@@ -36,23 +37,31 @@ def _tail(text: str) -> str:
 
 def run_command(command: str, cwd: Path, timeout: int) -> dict:
     started = time.monotonic()
+    process = subprocess.Popen(command, shell=True, cwd=cwd, stdin=subprocess.DEVNULL,
+                               stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+                               errors="replace", start_new_session=os.name == "posix",
+                               env={k: v for k, v in os.environ.items()
+                                    if k not in ("GITHUB_TOKEN", "GH_TOKEN", "GITLAB_TOKEN")
+                                    and not k.startswith("ATIPSPEC_")})
     try:
-        completed = subprocess.run(command, shell=True, cwd=cwd, stdin=subprocess.DEVNULL,
-                                   stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
-                                   errors="replace", timeout=timeout,
-                                   env={k: v for k, v in os.environ.items()
-                                        if k not in ("GITHUB_TOKEN", "GH_TOKEN", "GITLAB_TOKEN")
-                                        and not k.startswith("ATIPSPEC_")})
-        exit_code, output = completed.returncode, completed.stdout
-    except subprocess.TimeoutExpired as exc:
+        output, _ = process.communicate(timeout=timeout)
+        exit_code = process.returncode
+    except (subprocess.TimeoutExpired, KeyboardInterrupt) as exc:
+        if os.name == "posix":
+            os.killpg(process.pid, signal.SIGKILL)
+        else:
+            process.kill()
+        output, _ = process.communicate()
+        if isinstance(exc, KeyboardInterrupt):
+            raise
         exit_code = None
-        output = (exc.stdout or "") if isinstance(exc.stdout, str) else (exc.stdout or b"").decode("utf-8", "replace")
         output += f"\n[atipspec] timed out after {timeout}s"
     return {"command": command, "exit_code": exit_code, "duration_s": round(time.monotonic() - started, 2),
             "output_tail": _tail(output), "_output": output}
 
 
-def verify_delivery(project: Project, slug: str, tasks: list[str] | None = None, timeout: int = 1800) -> int:
+def verify_delivery(project: Project, slug: str, tasks: list[str] | None = None, timeout: int = 1800,
+                    *, budget_seconds: float | None = None) -> int:
     if timeout <= 0:
         raise AtipSpecError("timeout must be positive")
     directory = project.delivery_dir(slug)
@@ -67,6 +76,8 @@ def verify_delivery(project: Project, slug: str, tasks: list[str] | None = None,
     if not project.git.available:
         raise AtipSpecError("git is required: evidence is bound to the working tree hash.")
     selected = plan.tasks
+    if plan.final is not None and not tasks:
+        selected = [plan.final]
     if tasks:
         known = {task.id: task for task in plan.tasks}
         missing = [ident for ident in tasks if ident not in known]
@@ -76,6 +87,7 @@ def verify_delivery(project: Project, slug: str, tasks: list[str] | None = None,
     evidence_dir = directory / "evidence"
     evidence_dir.mkdir(exist_ok=True)
     failed = 0
+    deadline = time.monotonic() + budget_seconds if budget_seconds is not None else None
     for task in selected:
         if not task.verify:
             print(f"{task.id}: no Verify commands, nothing to run")
@@ -90,7 +102,10 @@ def verify_delivery(project: Project, slug: str, tasks: list[str] | None = None,
         logs.mkdir(exist_ok=True)
         for index, command in enumerate(task.verify, 1):
             print(f"[{task.id}] $ {command}")
-            record = run_command(command, project.root, timeout)
+            remaining = deadline - time.monotonic() if deadline is not None else timeout
+            if remaining <= 0:
+                raise AtipSpecError("Final verification exceeded the execution time budget; partial results cannot count as a pass")
+            record = run_command(command, project.root, min(timeout, remaining))
             output = record.pop("_output").encode("utf-8")
             log = logs / f"{task.id}-{execution}-{index}.log"
             log.write_bytes(output)
@@ -127,6 +142,8 @@ def verify_delivery(project: Project, slug: str, tasks: list[str] | None = None,
                                 "total": len(cases), "failed": sum(1 for case in cases if case["status"] == "failed")})
                 tests = [{"id": case["id"], "name": case["name"], "classname": case["classname"], "status": case["status"]}
                          for case in cases]
+                if any(case["status"] == "failed" for case in cases):
+                    result = "fail"
                 print(f"[{task.id}] report {task.report}: {len(cases)} test(s), "
                       f"{sum(1 for case in cases if case['status'] == 'failed')} failed")
         tree_after = project.fingerprint()
@@ -143,7 +160,7 @@ def verify_delivery(project: Project, slug: str, tasks: list[str] | None = None,
         print(f"{task.id}: {result} -> {project.rel(path)}")
         if tree_after != tree_before:
             print(f"{task.id}: the commands modified the working tree, so this evidence is already stale; "
-                  "commit or discard those changes and verify again")
+                  "inspect the changes and verify the finished candidate again")
         if result != "pass" or tree_after != tree_before:
             failed += 1
     return 1 if failed else 0

@@ -8,6 +8,8 @@ is the authenticated form; the gate ignores these records when a policy is set.
 """
 from __future__ import annotations
 
+from .specs import load_spec
+
 from datetime import datetime, timezone
 import json
 from pathlib import Path
@@ -18,7 +20,7 @@ from .errors import AtipSpecError
 from .project import Project
 from .trust import subject
 
-PHASES = ("spec", "plan")
+PHASES = ("spec", "plan", "proposal", "result")
 
 
 def _now() -> str:
@@ -48,7 +50,7 @@ def is_current(project: Project, slug: str, phase: str) -> bool:
     if data is None:
         return False
     try:
-        return data.get("subject") == subject(project, slug, phase)
+        return data.get("subject") == acceptance_subject(project, slug, phase)
     except (OSError, AtipSpecError):
         return False
 
@@ -80,16 +82,57 @@ def _write(project: Project, slug: str, phase: str, by: str | None) -> Path:
         raise AtipSpecError("Refusing a symlinked acceptance path")
     path.parent.mkdir(parents=True, exist_ok=True)
     data = {"schema": 1, "kind": "local-acceptance", "delivery": slug, "phase": phase,
-            "subject": subject(project, slug, phase), "accepted_at": _now(), "by": who(project, by),
+            "subject": acceptance_subject(project, slug, phase), "accepted_at": _now(), "by": who(project, by),
             "head": project.git.head()}
     path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     return path
 
 
+def acceptance_subject(project, slug, phase):
+    if phase == "proposal":
+        return subject(project, slug, "plan")
+    if phase == "result":
+        return subject(project, slug, "acceptance")
+    return subject(project, slug, phase)
+
+
+def accept_proposal(project: Project, slug: str, by: str | None = None) -> Path:
+    """Approve spec, approach and tests together, after validating all of them.
+
+    No acceptance is written when the proposed plan is incomplete. This is a
+    local declaration by the caller, not a cryptographic proof of humanity.
+    """
+    from .check import check_delivery
+    report = check_delivery(project, slug, preapproval=True)
+    spec_path = project.delivery_dir(slug) / "spec.md"
+    spec = load_spec(project, slug)
+    problems = [item.text for item in report.blocking(("spec", "plan", "contract", "base", "coordination"))]
+    if spec.open_questions:
+        problems.append("resolve the open questions before approving the proposal")
+    if problems:
+        raise AtipSpecError("Cannot accept the proposal: " + "; ".join(dict.fromkeys(problems)))
+    if spec.status == "draft":
+        _set_status(spec_path, "ready")
+    _write(project, slug, "spec", by)
+    _write(project, slug, "plan", by)
+    return _write(project, slug, "proposal", by)
+
+
+def accept_result(project: Project, slug: str, by: str | None = None) -> Path:
+    from .check import check_delivery
+    from .trust import selected_policy
+    if selected_policy(project) is not None:
+        raise AtipSpecError("This project selects a trust policy; use its authenticated acceptance procedure")
+    report = check_delivery(project, slug)
+    if not report.ok:
+        raise AtipSpecError("Cannot accept the result: " + report.render())
+    return _write(project, slug, "result", by)
+
+
 def accept_spec(project: Project, slug: str, by: str | None = None) -> Path:
     """Set the spec ready when it is complete, and record its content."""
     path = project.delivery_dir(slug) / "spec.md"
-    spec = parse_spec(path.read_text(encoding="utf-8"))
+    spec = load_spec(project, slug)
     problems = list(spec.problems)
     if not spec.requirements:
         problems.append("the spec has no requirements")

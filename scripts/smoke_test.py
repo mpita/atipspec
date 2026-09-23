@@ -101,8 +101,8 @@ Verify:
         run(executable, "review", "smoke", expect=1)   # nothing committed yet: refused, no packet
         git("add", "-A")
         git("commit", "-q", "-m", "smoke [smoke:T1]")
-        if "Next task: all tasks are committed" not in run(executable, "build", "smoke", "--no-context"):
-            raise SystemExit("The build phase must report that every task is committed")
+        if "Next task: all tasks are complete" not in run(executable, "build", "smoke", "--no-context"):
+            raise SystemExit("The build phase must report that every task is complete")
         for phase, identity in (("spec", "product"), ("plan", "engineering")):
             run(executable, "approve", "smoke", phase, "--identity", identity, "--key", str(keys[identity]), "--policy", str(policy))
         run(executable, "verify", "smoke", "--policy", str(policy))

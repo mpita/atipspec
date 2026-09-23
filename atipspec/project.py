@@ -12,7 +12,7 @@ from .gitrepo import Git
 
 SLUG = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$")
 # Files a delivery produces about itself must not change the tree they describe.
-FINGERPRINT_EXCLUDES = ("evidence", "review.md", "deferred.md", "approvals", "reports")
+FINGERPRINT_EXCLUDES = ("evidence", "review.md", "deferred.md", "approvals", "reports", "progress.json", "run.json")
 DEFAULT_POLICIES = {"approve_plan": True, "review_rounds": 2, "context_budget": 800, "strict_scope": False,
                     "criteria_syntax": "ears", "strict_criteria": False,
                     "max_requirements": 5, "max_tasks": 8, "max_age_hours": 48}

@@ -25,8 +25,9 @@ the contract. `atipspec spec` refuses to start until the contract is accepted.
    names, `forbid-pattern` for layer violations and banned libraries,
    `forbid-path` for files that must not exist, `require-command` for the
    quality commands. `atipspec audit` until it is clean.
-5. Create the initial living specs, one per capability the user names, from
-   `framework/templates/capability.md`, and the glossary's first terms.
+5. Record future capabilities in the overview. Create a living spec only when
+   its requirements are defined; do not create empty capability shells. Add
+   glossary terms only when the project needs shared terminology.
 6. The user accepts the contract by running `atipspec accept contract`, which
    sets its `status: accepted`; you never do.
 

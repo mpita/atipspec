@@ -34,8 +34,32 @@ def build_parser() -> argparse.ArgumentParser:
     new.add_argument("--initiative", help="initiative this delivery belongs to")
     new.add_argument("--branch", action="store_true", help="create and switch to branch delivery/<slug>")
     new.add_argument("--worktree", action="store_true", help="create branch delivery/<slug> in a sibling worktree")
+    new.add_argument("--branch-name", help="use the team's branch naming convention with --branch or --worktree")
+    new.add_argument("--reuse-branch", action="store_true", help="use an existing named local branch instead of creating it")
+    new.add_argument("--depends-on", action="append", help="delivery whose acceptance is required before integration (repeatable)")
     new.add_argument("--kind", choices=("feature", "fix"), default="feature",
                      help="fix: a defect repair with a regression criterion and a one-task plan, no interview")
+    binding = commands.add_parser("spec-bind", help="bind an authored specification to a guided delivery without approving it")
+    binding.add_argument("slug")
+    binding.add_argument("--file", required=True, help="Markdown requirements and scenarios with stable IDs")
+    proposal = commands.add_parser("proposal", help="present scope, scenarios, approach, tests and spec diff for approval")
+    proposal.add_argument("slug")
+    execution = commands.add_parser("run", help="execute an approved guided delivery using the configured process adapter")
+    execution.add_argument("slug")
+    execution.add_argument("--resume", action="store_true", help="retry after resolving a reported decision or failure")
+    execution.add_argument("--retry-interrupted", action="store_true", help="explicitly retry after inspecting an interrupted agent mutation")
+    execution.add_argument("--budget", type=int, default=900, help="total elapsed seconds for this approved version")
+    execution.add_argument("--timeout", type=int, default=300, help="seconds per adapter call or verification command")
+    execution.add_argument("--max-rounds", type=int, default=2, help="maximum automatic correction rounds")
+    commands.add_parser("adapter", help="show actual capabilities of the configured execution adapter")
+    team = commands.add_parser("team", help="show owners, changes, dependencies and requirements across configured Git refs")
+    team.add_argument("--json", action="store_true")
+    pin = commands.add_parser("contract-pin", help="pin a shared contract to an immutable commit from a local repository")
+    pin.add_argument("slug")
+    pin.add_argument("name")
+    pin.add_argument("--repository", required=True, help="repository alias in teams.json")
+    pin.add_argument("--ref", required=True, help="commit, tag or branch to resolve once")
+    pin.add_argument("--path", required=True, help="contract file at that revision")
 
     decision = commands.add_parser("decision", help="create a decision record in .atipspec/decisions/")
     decision.add_argument("slug")
@@ -61,19 +85,27 @@ def build_parser() -> argparse.ArgumentParser:
     context.add_argument("slug")
     context.add_argument("--out", help="write the context to this file instead of stdout")
     context.add_argument("--summary", action="store_true", help="print only the size summary")
+    context.add_argument("--role", choices=("guide", "analyst", "designer", "tester", "implementer", "reviewer"))
+    context.add_argument("--task", help="limit implementation context to this task and its requirements")
 
     for phase, text in (("explore", "enter the explore phase: brief an idea that is not clear yet"),
                         ("spec", "enter the spec phase: requirements and acceptance criteria"),
                         ("fix", "enter the fix phase: a regression criterion and a one-task plan for a defect"),
                         ("plan", "enter the plan phase: tasks the gate can prove"),
-                        ("build", "enter the build phase: code, evidence and one commit per task")):
+                        ("build", "enter the build phase: implementation, task progress and final verification")):
         entry = commands.add_parser(phase, help=f"{text} (refuses while a required step is missing)")
         entry.add_argument("slug")
         entry.add_argument("--no-context", action="store_true", help="print the workflow without the context material")
 
-    accept = commands.add_parser("accept", help="a person accepts the spec or the plan of a delivery, or the contract")
+    done = commands.add_parser("task-done", help="record implementation progress without requiring a commit")
+    done.add_argument("slug")
+    done.add_argument("task")
+    done.add_argument("--note", required=True, help="what was implemented; this does not replace verification")
+
+    accept = commands.add_parser("accept", help="a person approves a proposal or accepts a verified result")
     accept.add_argument("slug", help="delivery slug, or `contract`")
-    accept.add_argument("phase", nargs="?", choices=("spec", "plan"), help="spec or plan (omit for the contract)")
+    accept.add_argument("phase", nargs="?", choices=("spec", "plan", "proposal", "result"),
+                        help="proposal approves spec and plan together; result accepts the reviewed candidate")
     accept.add_argument("--by", help="who accepts; defaults to git's user.email")
 
     review = commands.add_parser("review", help="enter the review phase: write the packet for a fresh-context reviewer")
@@ -126,8 +158,9 @@ def build_parser() -> argparse.ArgumentParser:
         command.add_argument("--policy-sha256")
     report.add_argument("--number", type=int, help="PR or MR number, for a policy in provider mode")
 
-    ids = commands.add_parser("ids", help="show next available IDs for a capability")
+    ids = commands.add_parser("ids", help="generate independent stable IDs for concurrent work")
     ids.add_argument("capability")
+    ids.add_argument("--legacy", action="store_true", help="show local numeric counters for an existing sequential workflow")
     enterprise = commands.add_parser("enterprise-init", help="write trust policy, CI examples and adoption guide")
     enterprise.add_argument("--out", default=".atipspec/enterprise")
 
@@ -201,9 +234,13 @@ def run(args: argparse.Namespace) -> int:
             print(content, end="")
         return 0
     if args.command == "ids":
-        from .traceability import next_ids
-        req, ac = next_ids(project, args.capability)
-        print(f"{args.capability}/REQ-{req:03d} {args.capability}/AC-{ac:03d}")
+        from .traceability import next_ids, concurrent_ids
+        if args.legacy:
+            req, ac = next_ids(project, args.capability)
+            print(f"{args.capability}/REQ-{req:03d} {args.capability}/AC-{ac:03d}")
+        else:
+            req, ac = concurrent_ids(args.capability)
+            print(f"{args.capability}/{req} {args.capability}/{ac}")
         return 0
     if args.command == "enterprise-init":
         from .enterprise import scaffold
@@ -231,12 +268,50 @@ def run(args: argparse.Namespace) -> int:
         from .creators import new_delivery
         directory = new_delivery(project, args.slug, args.title, capability=args.capability, impact=args.impact,
                                  owner=args.owner, ticket=args.ticket, initiative=args.initiative,
-                                 branch=args.branch, worktree=args.worktree, kind=args.kind)
-        print(f"AtipSpec: created {directory} (spec.md, plan.md, deferred.md{', kind fix' if args.kind == 'fix' else ''})")
+                                 branch=args.branch, worktree=args.worktree, kind=args.kind,
+                                 branch_name=args.branch_name, reuse_branch=args.reuse_branch, depends_on=args.depends_on)
+        print(f"AtipSpec: created {directory} ({'spec.md, plan.md, deferred.md, kind fix' if args.kind == 'fix' else 'guided references, plan and baseline'})")
         if args.worktree:
-            print(f"Worktree on branch delivery/{args.slug}: cd {directory.parents[2]}")
+            print(f"Worktree on branch {args.branch_name or 'delivery/' + args.slug}: cd {directory.parents[2]}")
         print(f"Next: `atipspec {'fix' if args.kind == 'fix' else 'spec'} {args.slug}`")
         return 0
+    if args.command == "spec-bind":
+        from .specs import bind_spec
+        print(bind_spec(project, args.slug, Path(args.file)))
+        return 0
+    if args.command == "proposal":
+        from .proposal import render_proposal
+        print(render_proposal(project, args.slug), end="")
+        return 0
+    if args.command == "adapter":
+        from .adapter import CommandAdapter
+        import json
+        print(json.dumps(CommandAdapter.load(project).capabilities(), indent=2))
+        return 0
+    if args.command == "team":
+        from .teams import board
+        import json
+        data = board(project)
+        if args.json:
+            print(json.dumps(data, indent=2, ensure_ascii=False))
+        else:
+            print(data["visibility"])
+            for change in data["changes"]:
+                print(f"{change['slug']} [{change['status']}] @{change['owner'] or 'unassigned'} "
+                      f"{change['ref']} {change['capability']}: {', '.join(change['requirements'])}; "
+                      f"dependencies: {', '.join(change['depends_on']) or 'none'}")
+        return 0
+    if args.command == "contract-pin":
+        from .teams import pin_contract
+        print(pin_contract(project, args.slug, args.name, args.repository, args.ref, args.path))
+        return 0
+    if args.command == "run":
+        from .runner import run_delivery
+        import json
+        state = run_delivery(project, args.slug, resume=args.resume, retry_interrupted=args.retry_interrupted,
+                             budget=args.budget, timeout=args.timeout, max_rounds=args.max_rounds)
+        print(json.dumps(state, indent=2, ensure_ascii=False))
+        return 0 if state["status"] in ("ready_for_acceptance", "accepted") else 2
     if args.command == "decision":
         from .creators import new_decision
         path = new_decision(project, args.slug, args.title, args.affects)
@@ -271,7 +346,7 @@ def run(args: argparse.Namespace) -> int:
         return verify_delivery(project, args.slug, args.task, args.timeout)
     if args.command == "context":
         from .context import build_context, render_context
-        sections, summary = build_context(project, args.slug)
+        sections, summary = build_context(project, args.slug, role=args.role, task_id=args.task)
         if args.out:
             Path(args.out).write_text(render_context(sections), encoding="utf-8")
             print(summary)
@@ -283,7 +358,7 @@ def run(args: argparse.Namespace) -> int:
             print(summary)
         return 0
     if args.command == "accept":
-        from .accept import accept_contract, accept_plan, accept_spec
+        from .accept import accept_contract, accept_plan, accept_spec, accept_proposal, accept_result
         if args.slug == "contract" and args.phase is None:
             accept_contract(project)
             print("AtipSpec: contract.md accepted (status: accepted)")
@@ -291,9 +366,15 @@ def run(args: argparse.Namespace) -> int:
             return 0
         if args.phase is None:
             raise AtipSpecError("Say what you accept: `atipspec accept <slug> spec|plan`, or `atipspec accept contract`")
-        path = accept_spec(project, args.slug, args.by) if args.phase == "spec" else accept_plan(project, args.slug, args.by)
+        action = {"spec": accept_spec, "plan": accept_plan, "proposal": accept_proposal, "result": accept_result}
+        path = action[args.phase](project, args.slug, args.by)
         print(f"AtipSpec: {args.phase} of {args.slug} accepted for its current content ({project.rel(path)})")
-        print("Next: " + (f"`atipspec plan {args.slug}`" if args.phase == "spec" else f"`atipspec build {args.slug}`"))
+        next_command = "plan" if args.phase == "spec" else "deliver" if args.phase == "result" else "build"
+        print(f"Next: `atipspec {next_command} {args.slug}`")
+        return 0
+    if args.command == "task-done":
+        from .progress import mark_done
+        print(mark_done(project, args.slug, args.task, args.note))
         return 0
     if args.command in ("explore", "spec", "fix", "plan", "build"):
         from .phases import enter
@@ -315,7 +396,7 @@ def run(args: argparse.Namespace) -> int:
         from .deliver import deliver
         living, target = deliver(project, args.slug, policy=policy)
         print(f"AtipSpec: merged into {project.rel(living)} and moved to {project.rel(target)}/")
-        print("Next: commit, then ask the user to merge the branch")
+        print("Result archived. Commit, merge and deployment follow the repository's explicit policy.")
         return 0
     if args.command == "audit":
         from .audit import audit_project

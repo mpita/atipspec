@@ -2,6 +2,8 @@
 its capability and move the folder to .atipspec/archive/."""
 from __future__ import annotations
 
+from .specs import load_spec
+
 from datetime import date
 from pathlib import Path
 import re
@@ -63,17 +65,19 @@ def merge_requirements(text: str, requirements: list[Requirement]) -> str:
 def deliver(project: Project, slug: str, policy=None) -> tuple[Path, Path]:
     from .trust import selected_policy
     policy = policy or selected_policy(project)
-    if policy is None:
-        raise AtipSpecError("Delivery requires an external trust policy; a local check is not human acceptance")
     report = check_delivery(project, slug, policy=policy)
     if not report.ok:
         raise AtipSpecError("Cannot deliver: the check is not green.\n" + report.render())
+    if policy is None:
+        from .accept import is_current
+        if not is_current(project, slug, "result"):
+            raise AtipSpecError(f"The user must accept the current result: `atipspec accept {slug} result`")
     directory = project.delivery_dir(slug)
     target = project.archive / slug
     if target.exists():
         raise AtipSpecError(f"{project.rel(target)} already exists.")
     spec_path = directory / "spec.md"
-    spec = parse_spec(spec_path.read_text(encoding="utf-8"))
+    spec = load_spec(project, slug)
     capability = validate_slug(spec.capability, "capability") if spec.capability else slug
     living = project.specs / f"{capability}.md"
     if living.is_file():

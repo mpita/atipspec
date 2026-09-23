@@ -10,10 +10,12 @@ Exit codes: 0 green, 1 errors, 2 incomplete.
 """
 from __future__ import annotations
 
+from .specs import load_spec
+
 from dataclasses import dataclass, field
 
 from .contract import Contract, evaluate, matches, missing_commands, parse_contract
-from .delivery import Plan, load_evidence, parse_deferred, parse_plan, parse_review, parse_spec
+from .delivery import Plan, load_evidence, parse_deferred, parse_plan, parse_review, parse_spec, verification_task
 from .project import Project
 from .errors import AtipSpecError
 from . import frontmatter
@@ -77,8 +79,8 @@ class Report:
         if self.todos:
             return self.todos[0]
         if self.status == "checked":
-            return f"Export `atipspec report {self.slug}` and configure trusted acceptance with --policy"
-        return f"Run `atipspec deliver {self.slug}` with the external trust policy"
+            return f"Review `atipspec report {self.slug}`; the user accepts the result with `atipspec accept {self.slug} result`"
+        return f"Run `atipspec deliver {self.slug}`"
 
     def render(self, next_action: bool = True) -> str:
         head = f"{self.slug}  [{self.status}]"
@@ -146,13 +148,15 @@ def outside_scope(plan: Plan, files: list[str]) -> list[str]:
             if not name.startswith(".atipspec/") and not any(matches(glob, name) for glob in plan.scope)]
 
 
-def check_delivery(project: Project, slug: str, fingerprint=_UNSET, policy=None) -> Report:
+def check_delivery(project: Project, slug: str, fingerprint=_UNSET, policy=None, *, preapproval=False) -> Report:
     directory = project.delivery_dir(slug)
     report = Report(slug)
     policy = policy or selected_policy(project)
     report.source = "spec"
-    spec = parse_spec((directory / "spec.md").read_text(encoding="utf-8"))
+    spec = load_spec(project, slug)
     report.title = spec.title
+    if spec.meta.get("risk", "normal") not in ("low", "normal", "high"):
+        report.add("error", "risk must be low, normal or high")
     for problem in spec.problems:
         report.add("error", problem)
     if spec.status not in ("draft", "ready"):
@@ -179,7 +183,8 @@ def check_delivery(project: Project, slug: str, fingerprint=_UNSET, policy=None)
     from .lint import lint_criterion
     level = "error" if project.policy("strict_criteria") else "warning"
     for ac in spec.criteria:
-        for problem in lint_criterion(ac.id, ac.text, project.language, str(project.policy("criteria_syntax"))):
+        for problem in lint_criterion(ac.id, ac.text, project.language,
+                                      "free" if ac.form != "statement" else str(project.policy("criteria_syntax"))):
             report.add(level, problem)
     for name in spec.impact:
         if not (project.specs / f"{name}.md").is_file() and name != spec.capability:
@@ -188,12 +193,12 @@ def check_delivery(project: Project, slug: str, fingerprint=_UNSET, policy=None)
     if spec.status == "ready" and len(spec.requirements) > limit:
         report.add("warning", f"{len(spec.requirements)} requirements (policy {limit}): a delivery should fit in a "
                               "working day; split it into deliveries under an initiative")
-    if spec.status != "ready":
+    if spec.status != "ready" and not preapproval:
         report.status = "draft"
         report.add("todo", f"Finish the spec phase; the user accepts it with `atipspec accept {slug} spec`")
         return report
     from .accept import is_current, read_record
-    if policy is None and not is_current(project, slug, "spec"):
+    if policy is None and not preapproval and not is_current(project, slug, "spec"):
         report.status = "draft"
         changed = read_record(project, slug, "spec") is not None
         report.add("todo", ("spec.md or the contract changed after the acceptance" if changed
@@ -221,13 +226,21 @@ def check_delivery(project: Project, slug: str, fingerprint=_UNSET, policy=None)
                 covered.add(ident)
             else:
                 report.add("error", f"{task.id} covers {ident}, which is not an active requirement")
-        if not task.verify and not task.verify_none:
+        if not task.verify and not task.verify_none and plan.final is None:
             report.add("warning", f"{task.id} has no Verify commands; only the review can verify it")
     for ident in sorted(active - covered):
         report.add("error", f"{ident} is not covered by any task")
     methods = {ac.id: ac.method for ac in spec.criteria}
+    parents = {ac.id: ac.requirement for ac in spec.criteria}
     mapped: set[str] = set()
     for task in plan.tasks:
+        for ident in task.tests + task.manual:
+            if parents.get(ident) not in task.covers:
+                report.add("error", f"{task.id}: {ident} must belong to a requirement in Covers")
+        if task.tests and not verification_task(plan, task).verify:
+            report.add("error", f"{task.id}: Tests needs executable Verify commands")
+        if set(task.tests) & set(task.manual):
+            report.add("error", f"{task.id}: a criterion cannot be both Tests and Manual")
         for ident in task.tests:
             if methods.get(ident) == "manual":
                 report.add("error", f"{task.id} lists {ident} under Tests, but the spec marks it [manual]")
@@ -237,6 +250,10 @@ def check_delivery(project: Project, slug: str, fingerprint=_UNSET, policy=None)
         mapped.update(task.tests + task.manual)
     for ident in sorted(set(methods) - mapped):
         report.add("todo", f"{ident}: no task lists it under Tests or Manual")
+    if plan.final:
+        for ident in plan.final.proof:
+            if ident not in methods or methods[ident] != "test":
+                report.add("error", f"Final verification Proof names unknown or manual criterion {ident}")
     report.tasks_total = len(plan.tasks)
     limit = int(project.policy("max_tasks"))
     if len(plan.tasks) > limit:
@@ -249,10 +266,10 @@ def check_delivery(project: Project, slug: str, fingerprint=_UNSET, policy=None)
     contract = load_contract(project)
     for problem in contract.problems:
         report.add("error", problem)
-    commands = [command for task in plan.tasks for command in task.verify]
+    commands = plan.final.verify if plan.final else [command for task in plan.tasks for command in task.verify]
     for rule in missing_commands(contract, commands):
         report.add("error", f"contract requires every plan to verify with `{rule.args[0]}` (contract.md line {rule.line})")
-    if policy is None and project.policy("approve_plan") and spec.kind != "fix" and not is_current(project, slug, "plan"):
+    if policy is None and not preapproval and project.policy("approve_plan") and spec.kind != "fix" and not is_current(project, slug, "plan"):
         changed = read_record(project, slug, "plan") is not None
         report.add("todo", ("plan.md, spec.md or the contract changed after the plan's acceptance" if changed
                             else "plan.md is not accepted for its current content")
@@ -264,6 +281,8 @@ def check_delivery(project: Project, slug: str, fingerprint=_UNSET, policy=None)
         base = spec.meta.get("base") if isinstance(spec.meta.get("base"), str) else None
         files, label = changed_files(project, base)
         done = git.task_commits(slug, label)
+        if spec.meta.get("schema") == 2:
+            done = {}  # guided task completion is bound to the approved task, not a past commit label
         if not base or label is None:
             report.add("error", "the recorded base commit is missing; restore history before checking", "base")
         for violation in evaluate(contract, project.root, files, manifests_always=False):
@@ -307,12 +326,15 @@ def check_delivery(project: Project, slug: str, fingerprint=_UNSET, policy=None)
     evidence, problems = load_evidence(directory / "evidence")
     for problem in problems:
         report.add("error", problem)
+    from .progress import completed_tasks
+    completed = completed_tasks(project, slug, plan)
     for task in plan.tasks:
-        if task.id in done:
+        if task.id in done or task.id in completed:
             report.tasks_done += 1
         else:
-            report.add("todo", f"{task.id} is not committed: build it, run "
-                               f"`atipspec verify {slug} --task {task.id}` and commit with [{slug}:{task.id}]", "tasks")
+            report.add("todo", f"{task.id} is not complete: implement it and record "
+                               f"`atipspec task-done {slug} {task.id} --note <summary>`", "tasks")
+        task = verification_task(plan, task)
         if not task.verify:
             continue
         record = evidence.get(task.id)
@@ -320,12 +342,13 @@ def check_delivery(project: Project, slug: str, fingerprint=_UNSET, policy=None)
             for problem in evidence_problems(record, task, slug):
                 report.add("error", f"{task.id}: {problem}")
         if record is None:
-            report.add("todo", f"{task.id}: no evidence; run `atipspec verify {slug} --task {task.id}`")
+            selection = "" if task.id == "FINAL" else f" --task {task.id}"
+            report.add("todo", f"{task.id}: no evidence; run `atipspec verify {slug}{selection}`")
         elif record.result != "pass":
             report.add("error", f"{task.id}: last verification failed ({record.path.name}); fix and verify again")
         elif current is not None and record.tree != current:
             report.add("todo", f"{task.id}: evidence is stale (the working tree changed); verify again")
-        else:
+        if record is not None and (current is None or record.tree == current):
             for ident, problem in proof_problems(task, record).items():
                 report.add("error", f"{ident}: {problem}")
         if task.report:
@@ -395,17 +418,35 @@ def check_delivery(project: Project, slug: str, fingerprint=_UNSET, policy=None)
     from .traceability import merge_conflicts
     for problem in merge_conflicts(project, spec, slug):
         report.add("error", problem, "spec")
+    if spec.meta.get("schema") == 2:
+        from .teams import configuration, conflicts, dependencies, read_contracts
+        try:
+            config = configuration(project)
+            for problem in conflicts(project, slug):
+                report.add("error", problem, "coordination")
+            owners = config["owners"].get(spec.capability, [])
+            if owners and not spec.meta.get("owner"):
+                report.add("error", f"Assign a human owner for {spec.capability}; capability owners: {', '.join(owners)}", "coordination")
+            for problem in dependencies(project, slug):
+                report.add("todo", problem, "integration")
+            read_contracts(project, slug)
+            if project.system:
+                report.add("error", "Guided changes require immutable contract pins; replace the mutable system path with contract-pin", "coordination")
+        except (AtipSpecError, OSError, ValueError, TypeError) as exc:
+            report.add("error", str(exc), "coordination")
     report.source = "trust"
     if policy:
         check_assurance(project, slug, policy, report, spec, plan, evidence)
     else:
-        report.add("warning", "Local check only: evidence provenance and human approval are not authenticated; use --policy for acceptance")
+        report.add("info", "Local mode: acceptance records detect drift; identity and evidence provenance are not externally authenticated")
     if report.tasks_done == 0:
         report.status = "planned"
     elif report.tasks_done < report.tasks_total:
         report.status = "in_progress"
     else:
         report.status = ("verified" if policy else "checked") if report.ok else "implemented"
+    if policy is None and report.ok and is_current(project, slug, "result"):
+        report.status = "accepted"
     return report
 
 

@@ -25,7 +25,7 @@ class InstallTests(unittest.TestCase):
         self.assertEqual(main(["init", "--name", "Demo", "--language", "es", "--client", "codex"]), 0)
         self.assertTrue(Path(CLIENT_PATHS["codex"]).is_file())
         self.assertFalse(Path(CLIENT_PATHS["claude"]).exists())
-        # One skill per phase plus the umbrella, each phase skill short enough to cost nothing.
+        # Installed skills must match the shipped content, including updates.
         skills = shipped_skills()
         self.assertEqual(set(skills), {"atipspec", "atipspec-explore", "atipspec-spec", "atipspec-fix", "atipspec-plan",
                                        "atipspec-build", "atipspec-review", "atipspec-deliver",
@@ -33,8 +33,7 @@ class InstallTests(unittest.TestCase):
         for name, content in skills.items():
             path = Path(CLIENTS["codex"].skill_path(name))
             self.assertTrue(path.is_file(), name)
-            if name != "atipspec":
-                self.assertLess(content.count(b"\n"), 15, name)
+            self.assertEqual(path.read_bytes(), content)
         self.assertTrue(Path(".atipspec/framework/rules.md").is_file())
         for folder in ("specs", "deliveries", "archive", "decisions", "initiatives"):
             self.assertTrue(Path(".atipspec", folder).is_dir())

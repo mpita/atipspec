@@ -2,6 +2,8 @@
 overview.md and reports sizes; the curate workflow rewrites the prose."""
 from __future__ import annotations
 
+from .specs import load_spec
+
 from . import frontmatter
 from .audit import SIZE_CAPS
 from .check import Report, check_delivery
@@ -68,7 +70,7 @@ def curate_project(project: Project) -> Report:
             level = "warning" if lines > cap else "info"
             report.add(level, f"{filename}: {lines} lines (cap {cap})")
     for slug in project.list_deliveries():
-        spec = parse_spec((project.deliveries / slug / "spec.md").read_text(encoding="utf-8"))
+        spec = load_spec(project, slug)
         for name in spec.impact:
             if not (project.specs / f"{name}.md").is_file():
                 report.add("info", f"{slug} names {name!r} in its impact but there is no living spec for it yet")

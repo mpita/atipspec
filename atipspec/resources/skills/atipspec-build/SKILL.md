@@ -1,12 +1,9 @@
 ---
 name: atipspec-build
-description: AtipSpec phase build. Use when the user wants the planned tasks implemented, one task at a time, with evidence and one commit per task.
+description: Implement an approved ATIPSpec delivery through tests and task progress, without imposing a commit strategy.
 ---
 
-# Phase build
-
-1. Run `atipspec build <slug>` and do exactly what it prints. It names the next
-   task that is not committed.
-2. Work one task at a time; after each commit run `atipspec build <slug> --no-context`
-   for the next one. Never touch evidence/; `atipspec verify` writes it.
-3. If the command refuses, tell the user what it asks for and stop.
+Run `atipspec build <slug>` and follow its workflow. Work through the approved tasks,
+record progress with task-done, run focused checks during development and final
+verification on the completed candidate. Continue to review when prerequisites
+pass. Escalate material scope changes; respect the user's commit and push policy.

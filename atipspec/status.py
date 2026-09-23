@@ -38,6 +38,12 @@ def format_age(hours: float) -> str:
 def show_status(project: Project, slug: str | None = None) -> None:
     if slug:
         print(check_delivery(project, slug).render())
+        if (project.delivery_dir(slug) / "run.json").exists():
+            from .runner import read_state
+            state = read_state(project, slug)
+            print(f"execution checkpoint: {state['status']} — {state.get('reason', '')}")
+            print(f"elapsed: {state['elapsed_s']}s; correction rounds: {state['rounds']}")
+            print("Current gate results above take precedence over this saved checkpoint.")
         return
     deliveries = project.list_deliveries()
     archived = project.list_archived()
