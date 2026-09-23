@@ -2,7 +2,7 @@
 
 Spec-driven delivery with verifiable evidence and human acceptance.
 
-**Current version: 0.1.0.** See the [release history](CHANGELOG.md).
+**Current version: 0.2.0.** See the [release history](CHANGELOG.md).
 
 AtipSpec connects requirements, tasks, executable verification, review and
 approval. It works with Claude Code, Codex, Cursor, Copilot, Gemini CLI and
