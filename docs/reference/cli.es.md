@@ -91,12 +91,14 @@ a entrar en una fase dentro de la misma sesión.
 ### `atipspec accept`
 
 ```text
+atipspec accept SLUG proposal [--by WHO]
+atipspec accept SLUG result [--by WHO]
 atipspec accept SLUG spec [--by WHO]
 atipspec accept SLUG plan [--by WHO]
 atipspec accept contract
 ```
 
-Lo ejecuta una persona, nunca el modelo. `spec` se niega mientras un
+La persona aprueba en la conversación y el agente ejecuta el comando. También puedes usarlo manualmente. `spec` se niega mientras un
 requisito no tenga criterio o haya una pregunta abierta; si no, pone
 `status: ready` y escribe `approvals/local-spec.json` con un hash de
 `spec.md` y el contrato. `plan` exige una spec aceptada y un plan sin
@@ -105,8 +107,7 @@ pone `status: accepted` en `contract.md`. `--by` usa por defecto el
 `user.email` de git.
 
 `check` compara el hash registrado con los ficheros: después de cualquier
-edición la entrega vuelve a ser draft (o el plan queda sin aceptar) hasta
-que la persona vuelve a ejecutar el comando. Con `--policy`, mandan las
+edición la entrega vuelve a ser draft (o el plan queda sin aceptar) hasta que la persona aprueba el contenido cambiado y se registra de nuevo su aceptación. Con `--policy`, mandan las
 aprobaciones firmadas y estos registros se ignoran.
 
 ## Entregas

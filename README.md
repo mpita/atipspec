@@ -27,6 +27,16 @@ required step is missing and otherwise prints the workflow, the rules and the
 context. The developer leads; the model proposes. A local CLI cannot establish
 that a human approved simply because a Markdown field says so.
 
+Approve in the same conversation: the assistant presents the agreement and offers
+**Approve and continue**, **Request changes** or **Cancel**. Use the client's
+selector when available, or reply in plain language. After explicit confirmation,
+the assistant records acceptance and continues; you do not have to type commands
+or edit statuses. Contract approval can include the listed architecture decisions.
+Changed agreements need renewed approval, and the finished result has its own
+acceptance. External trust policies retain their authenticated procedure.
+
+The commands below are what the assistant runs (also available for manual use):
+
 ```sh
 atipspec proposal password-reset         # review scenarios, approach, tests and diff
 atipspec accept password-reset proposal  # explicit human approval of the agreement
@@ -38,6 +48,12 @@ atipspec report password-reset           # inspect the reviewed result and evide
 atipspec accept password-reset result    # explicit human result acceptance
 atipspec deliver password-reset          # local archive; does not commit, push or merge
 ```
+
+For existing projects, install the updated ATIPSpec package, then have the agent
+run `atipspec install --update` in the target project to refresh the framework and
+installed skills. This replaces customized framework/skill files; inspect the
+changes first. Reload the client's skills or start a fresh session if it has
+cached the old instructions.
 
 New feature deliveries reference canonical requirements in `.atipspec/specs/`.
 Write complete scenarios there or use `spec-bind <slug> --file <authored.md>`;

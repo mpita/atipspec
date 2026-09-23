@@ -79,7 +79,7 @@ class Report:
         if self.todos:
             return self.todos[0]
         if self.status == "checked":
-            return f"Review `atipspec report {self.slug}`; the user accepts the result with `atipspec accept {self.slug} result`"
+            return f"Present `atipspec report {self.slug}`; after human confirmation in the conversation, record it with `atipspec accept {self.slug} result`"
         return f"Run `atipspec deliver {self.slug}`"
 
     def render(self, next_action: bool = True) -> str:
@@ -195,7 +195,7 @@ def check_delivery(project: Project, slug: str, fingerprint=_UNSET, policy=None,
                               "working day; split it into deliveries under an initiative")
     if spec.status != "ready" and not preapproval:
         report.status = "draft"
-        report.add("todo", f"Finish the spec phase; the user accepts it with `atipspec accept {slug} spec`")
+        report.add("todo", f"Finish the spec phase; request human confirmation in the conversation, then record it with `atipspec accept {slug} spec`")
         return report
     from .accept import is_current, read_record
     if policy is None and not preapproval and not is_current(project, slug, "spec"):
@@ -203,7 +203,7 @@ def check_delivery(project: Project, slug: str, fingerprint=_UNSET, policy=None,
         changed = read_record(project, slug, "spec") is not None
         report.add("todo", ("spec.md or the contract changed after the acceptance" if changed
                             else "spec.md is not accepted for its current content")
-                   + f"; the user runs `atipspec accept {slug} spec`")
+                   + f"; request human confirmation in the conversation, then record it with `atipspec accept {slug} spec`")
         return report
 
     report.source = "plan"
@@ -273,7 +273,7 @@ def check_delivery(project: Project, slug: str, fingerprint=_UNSET, policy=None,
         changed = read_record(project, slug, "plan") is not None
         report.add("todo", ("plan.md, spec.md or the contract changed after the plan's acceptance" if changed
                             else "plan.md is not accepted for its current content")
-                   + f"; the user runs `atipspec accept {slug} plan`", "plan")
+                   + f"; request human confirmation in the conversation, then record it with `atipspec accept {slug} plan`", "plan")
 
     git = project.git
     if git.available:

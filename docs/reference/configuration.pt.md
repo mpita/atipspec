@@ -20,7 +20,7 @@ max_age_hours: 48
 | --- | --- | --- |
 | `name` | nome da pasta | nome do projeto, exibido por `status` |
 | `language` | `en` | idioma em que o modelo escreve os artefatos; `en`, `es` e `pt` também orientam o lint de critérios, os nomes de seção que o parser aceita e o dossiê de aceitação. Outro código funciona com as tabelas em inglês, e `audit` avisa isso |
-| `approve_plan` | `true` | `atipspec build` recusa até a pessoa executar `atipspec accept <slug> plan` |
+| `approve_plan` | `true` | `atipspec build` recusa até registrar a aprovação humana do plano (incluída na proposta guiada) |
 | `review_rounds` | `2` | rodadas de revisão sem um check verde antes de o modelo parar e reportar |
 | `context_budget` | `800` | linhas; `atipspec context` avisa acima disso |
 | `strict_scope` | `false` | quando verdadeiro, um arquivo alterado fora do `scope` do plano é um erro em vez de um aviso |

@@ -20,7 +20,7 @@ max_age_hours: 48
 | --- | --- | --- |
 | `name` | folder name | project name, shown by `status` |
 | `language` | `en` | language the model writes artifacts in; `en`, `es` and `pt` also drive the criterion lint, the section names the parser accepts and the acceptance dossier. Another code works with the English tables, and `audit` says so |
-| `approve_plan` | `true` | `atipspec build` refuses until the person runs `atipspec accept <slug> plan` |
+| `approve_plan` | `true` | `atipspec build` refuses until explicit human plan approval is recorded (included in guided proposal approval) |
 | `review_rounds` | `2` | review rounds without a green check before the model stops and reports |
 | `context_budget` | `800` | lines; `atipspec context` warns above it |
 | `strict_scope` | `false` | when true, a changed file outside the plan's `scope` is an error instead of a warning |

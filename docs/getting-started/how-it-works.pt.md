@@ -23,7 +23,7 @@ entregas ao longo de meses, e dois documentos curados, `overview.md` e
 
 | Pergunta | Respondida por |
 | --- | --- |
-| O que construímos? | Você, executando `atipspec accept <slug> spec` |
+| O que construímos? | Você, aprovando o acordo apresentado na conversa |
 | Sob quais regras? | O contrato que você aceitou com `atipspec accept contract`, aplicado por `check` e `audit` |
 | Uma tarefa está concluída? | git: um commit carregando `[slug:Tn]` |
 | Ela passa nas verificações? | `atipspec verify`, que registra os códigos de saída e o hash da árvore |
@@ -31,9 +31,12 @@ entregas ao longo de meses, e dois documentos curados, `overview.md` e
 | Está verificada? | `check --policy` com evidência de CI confiável e aprovações de produto/engenharia/QA |
 | Ela faz ship? | Você, fazendo merge |
 
-O modelo propõe a cada passo. Ele nunca escreve evidência, nunca escreve
-veredictos, nunca marca uma tarefa como concluída, nunca define `ready`,
-`accepted` ou `verified`, e nunca executa `atipspec accept`.
+O agente apresenta o acordo e oferece **Aprovar e continuar**, **Pedir alterações**
+ou **Cancelar**, pelo seletor do cliente ou por uma resposta escrita. Após sua
+aprovação explícita, executa `atipspec accept` e continua. Você não precisa executar
+comandos nem editar estados. O verificador registra evidências e o revisor emite
+veredictos; nenhum deles substitui sua decisão. Acordos alterados exigem nova
+aprovação. Políticas externas mantêm seu procedimento autenticado.
 
 ## Aceitação que você pode verificar
 

@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 ROLES = {
-    "guide": "Read the request and relevant repository facts. Separate facts, user decisions and assumptions. Ask only consequential unresolved questions. Present the proposal and result to the human; never approve either yourself.",
+    "guide": "Read the request and relevant repository facts. Separate facts, user decisions and assumptions. Ask only consequential unresolved questions. Present the agreement and offer approval, changes or cancellation in the conversation. Record explicit human confirmation with the local accept command and continue; do not require the user to run it. Never invent approval or replace an external policy's authenticated procedure.",
     "analyst": "Define actors, observable outcomes, scope and verifiable scenarios in canonical specs. Include relevant failures and boundaries. Do not invent business decisions or copy the same definition into the delivery.",
     "designer": "Choose the simplest compatible implementation within approved constraints. Identify affected interfaces, dependencies and recovery needs. Keep routine decomposition separate from approved commitments.",
     "tester": "Check scenario sufficiency before implementation. Select tests by risk, including negative permissions and isolation cases when applicable. During execution link actual results to behaviors. A successful build does not prove a business outcome.",

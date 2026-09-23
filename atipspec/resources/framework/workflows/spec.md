@@ -24,5 +24,7 @@ Include negative and boundary cases appropriate to risk.
 Prepare the approach and test strategy before seeking approval. Guided deliveries
 can enter `atipspec plan <slug>` while the proposal is still a draft. Present
 `atipspec proposal <slug>` and request one explicit human approval of the combined
-agreement with `atipspec accept <slug> proposal`. Never accept it on the user's
-behalf without their explicit instruction. Legacy spec/plan approvals still work.
+agreement in the conversation. After the user's explicit confirmation, execute
+`atipspec accept <slug> proposal` yourself and continue to build. Follow the shared
+approval rules; no command is required from the user. Legacy spec/plan approvals
+still work with the same conversational protocol.

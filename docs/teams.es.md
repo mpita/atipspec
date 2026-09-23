@@ -116,7 +116,7 @@ por la que una spec declara qué toca en vez de que el modelo lo adivine.
 La ceremonia es un dial en `config.yaml`, no una propiedad de la herramienta:
 
 ```yaml
-approve_plan: true      # build refuses until a person runs `atipspec accept <slug> plan`
+approve_plan: true      # build refuses until explicit human plan approval is recorded
 review_rounds: 2        # rounds before the model stops and reports
 context_budget: 800     # lines; context warns above it
 max_requirements: 5     # check warns above it: split the delivery

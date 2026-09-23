@@ -1,5 +1,10 @@
 # Quick start
 
+These examples show the legacy spec/plan sequence. In guided deliveries, review
+behavior, approach and tests together and approve once in the conversation; the
+assistant records `accept <slug> proposal`. All local approval commands below can
+be run by the assistant after your explicit confirmation.
+
 Start with local specification and verification, then configure trusted acceptance. The examples use
 Claude Code; the [clients page](../clients.md) shows the equivalent in the
 others.
@@ -64,14 +69,15 @@ Acceptance criteria:
 ```
 
 When the gate says the spec is complete, the model presents it and waits.
-This is **stop point 1**: read it, correct it, and accept it yourself:
+This is **stop point 1**: read it, request changes or approve in the conversation.
+The assistant records your confirmation:
 
 ```bash
 atipspec accept password-reset spec
 ```
 
 That sets `status: ready` and records what you accepted; if anyone edits the
-spec afterwards, the gate asks you again. The model never runs this command.
+spec afterwards, the gate asks you again. The assistant records your explicit conversational approval with this command.
 
 ## 4. Plan, build, review
 

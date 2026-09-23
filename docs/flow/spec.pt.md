@@ -1,5 +1,10 @@
 # spec
 
+Estes exemplos mostram a sequência legada de spec e plan. Em entregas guiadas,
+revise comportamento, abordagem e testes juntos e aprove uma vez na conversa; o
+agente registra `accept <slug> proposal`. O agente pode executar todos os comandos
+de aprovação local após sua confirmação explícita.
+
 **Da intenção a uma especificação que o revisor pode verificar.** A fase em
 que você decide o que será construído.
 
@@ -118,7 +123,7 @@ Acceptance criteria:
 ## Sua parte
 
 Leia como o contrato que ela é. Mude o texto, adicione critérios, corte
-escopo. Quando ela disser o que você quer, execute:
+escopo. Quando ela disser o que você quer, aprove na conversa. Para uma spec legada, o agente executa:
 
 ```bash
 atipspec accept password-reset spec
@@ -128,7 +133,7 @@ Ele recusa enquanto uma pergunta está em aberto ou um requisito não tem
 critério; caso contrário, define `status: ready` e registra um hash da
 spec e do contrato. A partir daí, qualquer edição em qualquer um dos dois
 arquivos transforma a entrega de volta em rascunho até você aceitar de
-novo. O modelo nunca executa esse comando.
+novo. O agente executa esse comando somente após sua aprovação explícita na conversa.
 
 !!! note "Mudando a spec depois"
     Se o build revelar que um critério não pode ser atendido, o modelo deve

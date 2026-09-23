@@ -24,7 +24,8 @@ class FlowTests(ProjectCase):
         code, out, _ = self.run_cli("check", "password-reset")
         self.assertEqual((code, check_delivery(project, "password-reset").status), (2, "draft"),
                          "a hand-written ready status is not an acceptance")
-        self.assertIn("the user runs `atipspec accept password-reset spec`", out)
+        self.assertIn("request human confirmation in the conversation", out)
+        self.assertIn("`atipspec accept password-reset spec`", out)
         self.assertEqual(self.accept()[0], 0)
         code, out, _ = self.run_cli("check", "password-reset")
         self.assertEqual((code, check_delivery(project, "password-reset").status), (2, "ready"))

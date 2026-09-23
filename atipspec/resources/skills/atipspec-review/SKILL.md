@@ -1,13 +1,17 @@
 ---
 name: atipspec-review
-description: AtipSpec phase review. Use when every task is committed and the delivery needs its adversarial review by a reviewer that did not write the code.
+description: Review a completed ATIPSpec candidate against the approved behavior and present its evidence for human acceptance.
 ---
 
 # Phase review
 
-1. Run `atipspec review <slug>`. It refuses until every task is committed with
-   fresh evidence; otherwise it writes the packet and prints what to do.
-2. Launch the reviewer in a context that has not seen this conversation, with
-   only the packet path. You never write review.md and never run `atipspec accept`.
-3. Then `atipspec check <slug>`; fix, verify, commit and review again as the
-   workflow says. If the command refuses, tell the user what it asks for and stop.
+1. Run `atipspec review <slug>` and follow the printed workflow and rules. Resolve
+   its prerequisites without bypassing them.
+2. Use an isolated reviewer when supported and authorized; otherwise disclose
+   shared context. Only the reviewer writes review.md. A review verdict is not
+   human approval.
+3. Run `atipspec check <slug>`; fix, verify and review again as needed. Present
+   the result and evidence. Offer approval, changes or cancellation in the same
+   conversation. After explicit human confirmation, the coordinating assistant
+   records local acceptance with `atipspec accept <slug> result` and delivers.
+   Follow an external trust policy's authenticated procedure when configured.

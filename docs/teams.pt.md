@@ -114,7 +114,7 @@ motivo pelo qual uma spec declara o que ela toca em vez do modelo adivinhar.
 Cerimônia é um dial em `config.yaml`, não uma propriedade da ferramenta:
 
 ```yaml
-approve_plan: true      # build refuses until a person runs `atipspec accept <slug> plan`
+approve_plan: true      # build refuses until explicit human plan approval is recorded
 review_rounds: 2        # rounds before the model stops and reports
 context_budget: 800     # lines; context warns above it
 max_requirements: 5     # check warns above it: split the delivery

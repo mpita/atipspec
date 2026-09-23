@@ -77,8 +77,8 @@ def prerequisites(project: Project, phase: str, slug: str, report: Report) -> No
             raise _refuse(f"{slug} is a fix delivery: use `atipspec fix {slug}`; a fix has no interview")
         if spec.meta.get("schema") != 2 and not contract_accepted(project):
             raise _refuse("the architecture contract is not accepted yet: run the contract phase "
-                          "(`atipspec contract`) and ask the user to run `atipspec accept contract`; "
-                          "never set its status yourself")
+                          "(`atipspec contract`), present it for approval in the conversation, "
+                          "then record the user's explicit confirmation with `atipspec accept contract`")
         return
     if phase == "plan":
         from .specs import load_spec

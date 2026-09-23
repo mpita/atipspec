@@ -6,7 +6,11 @@ description: Guide an ATIPSpec change from proposal through implementation and r
 Keep one conversation with the user. Read `atipspec ship <slug>` and enter the
 indicated phase. Before approval, prepare scenarios, approach and verification
 strategy together and present `atipspec proposal <slug>`. Record approval only in
-response to the user's explicit instruction for that proposal.
+response to the user's explicit instruction for that proposal. Offer approval,
+changes or cancellation using the client's question tool or a plain conversation
+reply. Then run `atipspec accept <slug> proposal` yourself and continue. Never
+require the user to run approval commands or edit statuses. Follow the printed
+conversational approval rules, including checking that the agreement is unchanged.
 
 After approval, implement, test and review within the agreement. Fix defects
 without returning routine orchestration to the user. Pause for a material change,

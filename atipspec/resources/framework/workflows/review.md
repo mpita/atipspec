@@ -19,7 +19,9 @@ Criteria cannot be deferred; significant risk exceptions use optional trust poli
 
 A green local check is ready for the human to inspect, not yet accepted. Present
 `atipspec report <slug>` with a brief demonstration and remaining limitations.
-The human records `atipspec accept <slug> result`; then `atipspec deliver <slug>`
-archives the accepted result. No signatures are required in local mode. Projects
+Request result acceptance in the conversation. After the human explicitly approves,
+the coordinating assistant runs `atipspec accept <slug> result`, then
+`atipspec deliver <slug>` archives it. The reviewer cannot grant human acceptance.
+No signatures are required in local mode. Projects
 with an external trust policy retain their authenticated CI and approval gates.
 Merge and deployment follow the repository's explicit policy.

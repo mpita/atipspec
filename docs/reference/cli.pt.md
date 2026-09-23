@@ -90,12 +90,14 @@ reentrar em uma fase na mesma sessão.
 ### `atipspec accept`
 
 ```text
+atipspec accept SLUG proposal [--by WHO]
+atipspec accept SLUG result [--by WHO]
 atipspec accept SLUG spec [--by WHO]
 atipspec accept SLUG plan [--by WHO]
 atipspec accept contract
 ```
 
-Executado por uma pessoa, nunca pelo modelo. `spec` recusa enquanto um
+A pessoa aprova na conversa e o agente executa o comando. O uso manual continua disponível. `spec` recusa enquanto um
 requisito não tiver critério ou uma pergunta estiver aberta; caso
 contrário, define `status: ready` e escreve `approvals/local-spec.json`
 com um hash de `spec.md` e do contrato. `plan` exige uma spec aceita e um
@@ -104,8 +106,7 @@ plan sem erros, e registra o hash do spec, do plan e do contrato.
 padrão o `user.email` do git.
 
 `check` compara o hash registrado com os arquivos: depois de qualquer
-edição, a entrega volta a ser draft (ou o plan fica não aceito) até que a
-pessoa execute o comando novamente. Com `--policy`, as aprovações
+edição, a entrega volta a ser draft (ou o plan fica não aceito) até que a pessoa aprove o conteúdo alterado e a aceitação seja registrada novamente. Com `--policy`, as aprovações
 assinadas prevalecem e esses registros são ignorados.
 
 ## Entregas

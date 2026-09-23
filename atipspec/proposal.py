@@ -26,7 +26,8 @@ def render_proposal(project, slug):
         lines += [f"- Open question: {question}" for question in spec.open_questions]
     else:
         lines += [f"Content digest (current draft): `{subject(project, slug, 'plan')}`", "",
-                  f"The user approves scope, approach and tests together: `atipspec accept {slug} proposal`.",
+                  "Present scope, approach and tests together. Offer: Approve and continue / Request changes / Cancel.",
+                  f"After explicit human confirmation in this conversation, the assistant records it with `atipspec accept {slug} proposal`.",
                   "Approval authorizes implementation within this agreement. Result acceptance, merge and deployment remain separate."]
     lines += ["", "## Change intent", "", (directory / "spec.md").read_text().strip(), "", "## Behaviors", ""]
     for req in spec.requirements:

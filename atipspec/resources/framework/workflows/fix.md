@@ -15,8 +15,9 @@ you change nothing the defect does not require.
    question only if the expected behavior is not clear from the report or the
    living specs. If the fix would change a behavior a living spec declares, stop:
    that is a delivery (`atipspec spec`), not a fix.
-3. `atipspec check <slug>` until the only todo is the acceptance, then ask the
-   user to run `atipspec accept <slug> spec`. STOP POINT 1.
+3. Present the regression criterion and request approval in this conversation.
+   After the user's explicit confirmation, run `atipspec accept <slug> spec`
+   yourself. Follow the shared approval rules. STOP POINT 1.
 4. Fill `plan.md`: `scope` with the files involved, the Approach in two lines,
    and T1's `Verify:` with the real test command; the contract's required
    commands are already listed. A fix needs no plan acceptance.

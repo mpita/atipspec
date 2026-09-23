@@ -102,7 +102,7 @@ def build_parser() -> argparse.ArgumentParser:
     done.add_argument("task")
     done.add_argument("--note", required=True, help="what was implemented; this does not replace verification")
 
-    accept = commands.add_parser("accept", help="a person approves a proposal or accepts a verified result")
+    accept = commands.add_parser("accept", help="record explicit human approval; the assistant may run this after confirmation")
     accept.add_argument("slug", help="delivery slug, or `contract`")
     accept.add_argument("phase", nargs="?", choices=("spec", "plan", "proposal", "result"),
                         help="proposal approves spec and plan together; result accepts the reviewed candidate")
@@ -362,7 +362,7 @@ def run(args: argparse.Namespace) -> int:
         if args.slug == "contract" and args.phase is None:
             accept_contract(project)
             print("AtipSpec: contract.md accepted (status: accepted)")
-            print("Next: commit it; `atipspec spec <slug>` can start now")
+            print("Next: continue with the requested delivery; `atipspec spec <slug>` can start now")
             return 0
         if args.phase is None:
             raise AtipSpecError("Say what you accept: `atipspec accept <slug> spec|plan`, or `atipspec accept contract`")
