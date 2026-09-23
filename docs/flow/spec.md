@@ -1,5 +1,10 @@
 # spec
 
+These examples show the legacy spec/plan sequence. In guided deliveries, review
+behavior, approach and tests together and approve once in the conversation; the
+assistant records `accept <slug> proposal`. All local approval commands below can
+be run by the assistant after your explicit confirmation.
+
 **From intent to a specification the reviewer can verify.** The phase where
 you decide what gets built.
 
@@ -115,7 +120,7 @@ Acceptance criteria:
 ## Your part
 
 Read it as the contract it is. Change wording, add criteria, cut scope. When
-it says what you want, run:
+it says what you want, approve in the conversation. For a legacy spec, the assistant then runs:
 
 ```bash
 atipspec accept password-reset spec
@@ -124,7 +129,7 @@ atipspec accept password-reset spec
 It refuses while a question is open or a requirement has no criterion;
 otherwise it sets `status: ready` and records a hash of the spec and the
 contract. From then on, any edit to either file turns the delivery back into
-a draft until you accept again. The model never runs this command.
+a draft until you accept again. The assistant runs this command only after your explicit approval in the conversation.
 
 !!! note "Changing the spec later"
     If the build reveals that a criterion cannot be met, the model must stop

@@ -24,7 +24,8 @@ class FlowTests(ProjectCase):
         code, out, _ = self.run_cli("check", "password-reset")
         self.assertEqual((code, check_delivery(project, "password-reset").status), (2, "draft"),
                          "a hand-written ready status is not an acceptance")
-        self.assertIn("the user runs `atipspec accept password-reset spec`", out)
+        self.assertIn("request human confirmation in the conversation", out)
+        self.assertIn("`atipspec accept password-reset spec`", out)
         self.assertEqual(self.accept()[0], 0)
         code, out, _ = self.run_cli("check", "password-reset")
         self.assertEqual((code, check_delivery(project, "password-reset").status), (2, "ready"))
@@ -93,7 +94,7 @@ class FlowTests(ProjectCase):
 
         code, out, err = self.run_cli("deliver", "password-reset")
         self.assertEqual(code, 1)
-        self.assertIn("trust policy", err)
+        self.assertIn("accept the current result", err)
         self.assertTrue(self.delivery().exists())
 
     def test_verify_records_failures_and_unknown_tasks(self):
@@ -379,7 +380,7 @@ class ProofTests(ProjectCase):
                         f"Verify:\n- `{JUNIT}`\n\n### T2: Expiry\n\nCovers: REQ-002\nTests: AC-003\nVerify:\n- `true`\n")
         self.accept("password-reset", "plan")
         code, out, err = self.run_cli("verify", "password-reset", "--task", "T1")
-        self.assertEqual(code, 0, out + err)
+        self.assertEqual(code, 1, out + err)
         self.assertIn("report .atipspec/tmp/junit.xml: 2 test(s), 1 failed", out)
         evidence = json.loads(next((self.delivery() / "evidence").glob("T1-*.json")).read_text())
         self.assertEqual([t["status"] for t in evidence["tests"]], ["passed", "failed"])
@@ -390,7 +391,7 @@ class ProofTests(ProjectCase):
         self.assertFalse(any("AC-001" in e for e in report.errors))
         plan.write_text(plan.read_text().replace("tests.test_reset.test_missing", "test_expiry"))
         self.accept("password-reset", "plan")
-        self.assertEqual(self.run_cli("verify", "password-reset", "--task", "T1")[0], 0)
+        self.assertEqual(self.run_cli("verify", "password-reset", "--task", "T1")[0], 1)
         evidence = json.loads(max((self.delivery() / "evidence").glob("T1-*.json"), key=lambda p: p.stat().st_mtime).read_text())
         report = check_delivery(project, "password-reset")
         self.assertTrue(any("AC-002: the named test test_expiry failed" in e for e in report.errors), report.render())
@@ -406,7 +407,7 @@ class ProofTests(ProjectCase):
         # Without Report and Proof nothing changes; a Report without Proof for a criterion is only informative.
         plan.write_text(plan.read_text().replace("Proof:\n- AC-001: test_link\n- AC-002: test_expiry\n", ""))
         self.accept("password-reset", "plan")
-        self.assertEqual(self.run_cli("verify", "password-reset", "--task", "T1")[0], 0)
+        self.assertEqual(self.run_cli("verify", "password-reset", "--task", "T1")[0], 1)
         report = check_delivery(project, "password-reset")
         self.assertFalse(any("named test" in e for e in report.errors))
         self.assertTrue(any("AC-001 has no named test in T1's Proof" in i for i in report.of("info")))
@@ -444,7 +445,8 @@ class ProofTests(ProjectCase):
         plan.write_text(f"# Plan\n\n### T1: A\n\nCovers: REQ-001, REQ-002\nTests: AC-001, AC-002, AC-003\n"
                         f"Report: .atipspec/tmp/junit.xml\nProof:\n- AC-001: test_link\nVerify:\n- `{JUNIT}`\n")
         self.accept("password-reset", "plan")
-        self.assertEqual(self.run_cli("verify", "password-reset")[0], 0)
+        self.assertEqual(self.run_cli("verify", "password-reset")[0], 1,
+                         "a report with failed tests fails verification even if the writer exits zero")
         from atipspec.reporting import report_data, render_report
         data = report_data(Project.find(self.root), "password-reset")
         self.assertEqual(data["matrix"][0]["tests"], [{"task": "T1", "test": "test_link", "status": "passed"}])
@@ -637,8 +639,7 @@ class PhaseTests(ProjectCase):
     def test_phases_refuse_until_their_prerequisites_hold(self):
         self.new_delivery()
         code, _, err = self.run_cli("spec", "password-reset")
-        self.assertEqual(code, 1)
-        self.assertIn("contract is not accepted", err)
+        self.assertEqual(code, 0, "guided proposals include project constraints in one approval")
         self.write_contract("")
         code, out, _ = self.run_cli("spec", "password-reset")
         self.assertEqual(code, 0)
@@ -663,7 +664,7 @@ class PhaseTests(ProjectCase):
         self.write_plan("true", "true")
         code, out, _ = self.run_cli("build", "password-reset", "--no-context")
         self.assertEqual(code, 0)
-        self.assertIn("Next task: T1 is not committed", out)
+        self.assertIn("Next task: T1 is not complete", out)
         self.assertIn("next phase is build", self.run_cli("ship", "password-reset")[1])
         code, _, err = self.run_cli("review", "password-reset")
         self.assertEqual((code, "not ready for review" in err), (1, True))

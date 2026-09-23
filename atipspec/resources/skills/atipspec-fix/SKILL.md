@@ -1,6 +1,6 @@
 ---
 name: atipspec-fix
-description: AtipSpec phase fix. Use when the user reports a bug or defect to repair: a regression criterion, a one-task plan and the same gate, without the spec interview.
+description: "AtipSpec phase fix. Use when the user reports a bug or defect to repair: a regression criterion, a one-task plan and the same gate, without the spec interview."
 ---
 
 # Phase fix

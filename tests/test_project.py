@@ -136,6 +136,10 @@ class CurateAndInitiativeTests(ProjectCase):
 
     def test_worktree_creates_sibling_checkout(self):
         code, out, err = self.run_cli("new", "wt", "--title", "Worktree", "--worktree")
+        self.assertEqual(code, 1, "do not create an unusable worktree when ATIPSpec only exists in uncommitted files")
+        self.assertIn("no committed ATIPSpec configuration", err)
+        self.commit("test fixture: initialized project")
+        code, out, err = self.run_cli("new", "wt", "--title", "Worktree", "--worktree")
         self.assertEqual(code, 0, err)
         sibling = self.root.parent / f"{self.root.name}-wt"
         self.addCleanup(lambda: __import__("shutil").rmtree(sibling, ignore_errors=True))
@@ -143,6 +147,7 @@ class CurateAndInitiativeTests(ProjectCase):
         self.assertFalse((self.root / ".atipspec/deliveries/wt").exists())
         self.assertIn("delivery/wt", self.git("-C", str(sibling), "branch", "--show-current"))
         self.assertIn(f"cd {sibling}", out)
+        self.assertEqual(Project.find(sibling).root, sibling)
 
 
 if __name__ == "__main__":

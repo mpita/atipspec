@@ -6,7 +6,7 @@ can write the files by hand and the CLI can still read them without ambiguity.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 import json
 from pathlib import Path
 import re
@@ -14,20 +14,25 @@ import re
 from . import frontmatter
 from .locale import NO_COMMANDS, empty_pattern, section_pattern
 
-REQ_HEADING = re.compile(r"^#{2,4}\s+(REQ-\d{3,})(?:\s*\[(remove)\])?\s*:\s*(\S.*?)\s*$", re.I)
-AC_LINE = re.compile(r"^\s*[-*]\s+(AC-\d{3,})(?:\s*\[\s*(test|manual)\s*\])?\s*:\s*(\S.*?)\s*$", re.I)
-AC_LIKE = re.compile(r"^\s*[-*]\s+AC-\d{3,}\b", re.I)
-AC_PLACEHOLDER = re.compile(r"^\s*[-*]\s+AC-\d{3,}\s*:\s*$", re.I)   # the template's empty criterion
+ID_SUFFIX = r"(?:[A-Z0-9]+-)*[0-9]{3,}"
+REQ_PATTERN = rf"REQ-{ID_SUFFIX}"
+AC_PATTERN = rf"AC-{ID_SUFFIX}"
+REQ_HEADING = re.compile(rf"^#{{2,4}}\s+({REQ_PATTERN})(?:\s*\[(remove)\])?\s*:\s*(\S.*?)\s*$", re.I)
+AC_LINE = re.compile(rf"^\s*[-*]\s+({AC_PATTERN})(?:\s*\[\s*(test|manual)\s*\])?\s*:\s*(\S.*?)\s*$", re.I)
+AC_HEADING = re.compile(rf"^#{{3,6}}\s+({AC_PATTERN})(?:\s*\[\s*(test|manual|invariant)\s*\])?\s*:\s*(\S.*?)\s*$", re.I)
+AC_LIKE = re.compile(rf"^\s*[-*]\s+{AC_PATTERN}\b", re.I)
+AC_PLACEHOLDER = re.compile(rf"^\s*[-*]\s+{AC_PATTERN}\s*:\s*$", re.I)
 TASK_HEADING = re.compile(r"^#{2,4}\s+(T\d+)\s*:\s*(\S.*?)\s*$")
 FIELD = re.compile(r"^\s*(?:[-*]\s+)?(?:\*\*)?(Covers|Verify|Tests|Manual|Report|Proof)(?:\*\*)?\s*:\s*(.*?)\s*$", re.I)
-PROOF_ITEM = re.compile(r"^\s*[-*]\s+(AC-\d{3,})\s*:\s*(\S.*?)\s*$", re.I)
+PROOF_ITEM = re.compile(rf"^\s*[-*]\s+({AC_PATTERN})\s*:\s*(\S.*?)\s*$", re.I)
 LIST_ITEM = re.compile(r"^\s*[-*]\s+(\S.*?)\s*$")
 HEADING2 = re.compile(r"^##\s+(.+?)\s*$")
 HEADING = re.compile(r"^#{1,6}\s")
-VERDICT = re.compile(r"^\s*[-*]\s+(AC-\d{3,})\s*:\s*(PASS|FAIL)\b[\s.:—–-]*(.*?)\s*$", re.I)
+VERDICT = re.compile(rf"^\s*[-*]\s+({AC_PATTERN})\s*:\s*(PASS|FAIL)\b[\s.:—–-]*(.*?)\s*$", re.I)
 FINDING = re.compile(r"^\s*[-*]\s+(F\d+)\s*\[(blocker|major|minor)\]\s*:\s*(\S.*?)\s*$", re.I)
-DEFERRED = re.compile(r"^\s*[-*]\s+(F\d+|AC-\d{3,}|REQ-\d{3,})\s*:\s*(\S.*?)\s*$", re.I)
-REQ_ID = re.compile(r"REQ-\d{3,}", re.I)
+DEFERRED = re.compile(rf"^\s*[-*]\s+(F\d+|{AC_PATTERN}|{REQ_PATTERN})\s*:\s*(\S.*?)\s*$", re.I)
+REQ_ID = re.compile(rf"\b{REQ_PATTERN}\b", re.I)
+AC_ID = re.compile(rf"\b{AC_PATTERN}\b", re.I)
 OPEN_QUESTIONS = section_pattern("open_questions")
 ASSUMPTIONS = section_pattern("assumptions")
 EMPTY_ITEM = empty_pattern()
@@ -41,6 +46,9 @@ class Criterion:
     requirement: str
     line: int
     method: str = "test"     # test, or manual: a person observes it
+    title: str | None = None
+    steps: list[tuple[str, str]] = field(default_factory=list)
+    form: str = "statement"
 
 
 @dataclass
@@ -112,6 +120,7 @@ class Plan:
     meta: dict
     tasks: list[Task]
     problems: list[str]
+    final: Task | None = None
 
     @property
     def scope(self) -> list[str]:
@@ -167,6 +176,41 @@ def _lines(text: str) -> tuple[dict, list[str], str | None]:
     return meta, lines, None
 
 
+STEP_WORDS = {
+    "GIVEN": "GIVEN", "DADO": "GIVEN", "DADA": "GIVEN", "DADOS": "GIVEN", "DADAS": "GIVEN",
+    "WHEN": "WHEN", "CUANDO": "WHEN", "QUANDO": "WHEN",
+    "THEN": "THEN", "ENTONCES": "THEN", "ENTÃO": "THEN", "ENTAO": "THEN",
+    "AND": "AND", "Y": "AND", "E": "AND", "BUT": "BUT", "PERO": "BUT", "MAS": "BUT",
+    "INVARIANT": "INVARIANT", "INVARIANTE": "INVARIANT",
+}
+STEP = re.compile(r"^\s*(?:[-*]\s+)?(?:\*\*)?(" + "|".join(STEP_WORDS) + r")(?:\*\*)?(?:\s*:\s*|\s+|$)(.*?)\s*$", re.I)
+
+
+def _validate_scenario(spec: Spec, criterion: Criterion) -> None:
+    words = [word for word, _ in criterion.steps]
+    prefix = f"spec.md line {criterion.line}: {criterion.id}"
+    if criterion.form == "invariant":
+        if not words or any(word not in ("INVARIANT", "THEN", "AND", "BUT") for word in words):
+            spec.problems.append(f"{prefix} needs an INVARIANT or THEN assertion")
+    elif "WHEN" not in words or "THEN" not in words:
+        spec.problems.append(f"{prefix} scenario needs WHEN and THEN with observable outcomes")
+    else:
+        stage = -1
+        for word in words:
+            if word in ("AND", "BUT"):
+                continue
+            new_stage = {"GIVEN": 0, "WHEN": 1, "THEN": 2}.get(word, -1)
+            if new_stage < stage or new_stage < 0:
+                spec.problems.append(f"{prefix} steps must follow GIVEN, WHEN, THEN order")
+                break
+            stage = new_stage
+    if words and words[0] in ("AND", "BUT"):
+        spec.problems.append(f"{prefix} cannot start with AND or BUT")
+    if any(not value for _, value in criterion.steps):
+        spec.problems.append(f"{prefix} has an empty scenario step")
+    criterion.text = "; ".join(f"{word.capitalize()} {value}" for word, value in criterion.steps)
+
+
 def parse_spec(text: str) -> Spec:
     try:
         meta, lines, _ = _lines(text)
@@ -175,23 +219,57 @@ def parse_spec(text: str) -> Spec:
     spec = Spec(meta, None, [], [], [])
     section = ""
     current: Requirement | None = None
+    scenario: Criterion | None = None
+    requirement_depth = 0
     for number, line in enumerate(lines, 1):
         if spec.title is None and line.startswith("# "):
             spec.title = line[2:].strip() or None
             continue
         requirement = REQ_HEADING.match(line)
         if requirement:
+            scenario = None
+            requirement_depth = len(line) - len(line.lstrip("#"))
             current = Requirement(requirement.group(1).upper(), requirement.group(3),
                                   bool(requirement.group(2)), number)
             spec.requirements.append(current)
+            continue
+        criterion_heading = AC_HEADING.match(line)
+        if criterion_heading:
+            depth = len(line) - len(line.lstrip("#"))
+            if current is None or depth <= requirement_depth:
+                spec.problems.append(f"spec.md line {number}: {criterion_heading.group(1)} must be nested under a requirement")
+                scenario = None
+                continue
+            ident, method, title = criterion_heading.groups()
+            scenario = Criterion(ident.upper(), "", current.id, number,
+                                 "manual" if method and method.lower() == "manual" else "test",
+                                 title=title, form="invariant" if method and method.lower() == "invariant" else "scenario")
+            current.criteria.append(scenario)
+            current.body.append(line)
             continue
         heading = HEADING2.match(line)
         if heading:
             section = heading.group(1)
             current = None
+            scenario = None
             continue
         if HEADING.match(line):
             current = None
+            scenario = None
+            continue
+        if scenario is not None:
+            current.body.append(line)
+            step = STEP.match(line)
+            if step:
+                scenario.steps.append((STEP_WORDS[step.group(1).upper()], step.group(2)))
+            elif line.strip():
+                # Indented continuation belongs to the previous step. Unmarked
+                # prose must not silently replace an observable assertion.
+                if line[:1].isspace() and scenario.steps:
+                    word, value = scenario.steps[-1]
+                    scenario.steps[-1] = (word, value + " " + line.strip())
+                else:
+                    spec.problems.append(f"spec.md line {number}: expected a scenario step (GIVEN/WHEN/THEN)")
             continue
         criterion = AC_LINE.match(line)
         if criterion:
@@ -215,6 +293,9 @@ def parse_spec(text: str) -> Spec:
             current.body.append(line)
     if spec.title is None and isinstance(meta.get("title"), str):
         spec.title = meta["title"]
+    for criterion in spec.criteria:
+        if criterion.form != "statement":
+            _validate_scenario(spec, criterion)
     return spec
 
 
@@ -234,6 +315,13 @@ def parse_plan(text: str) -> Plan:
     current: Task | None = None
     listing: str | None = None      # "verify" or "proof" while reading that field's list items
     for number, line in enumerate(lines, 1):
+        if re.match(r"^##\s+(?:Final verification|Verificación final|Verificação final)\s*$", line, re.I):
+            if plan.final is not None:
+                plan.problems.append(f"plan.md line {number}: duplicate final verification section")
+            current = Task("FINAL", "Final verification", number)
+            plan.final = current
+            listing = None
+            continue
         task = TASK_HEADING.match(line)
         if task:
             current = Task(task.group(1), task.group(2), number)
@@ -255,7 +343,7 @@ def parse_plan(text: str) -> Plan:
                 if value and not current.covers:
                     plan.problems.append(f"plan.md line {number}: Covers must list REQ ids")
             elif name in ("tests", "manual"):
-                setattr(current, name, re.findall(r"AC-\d{3,}", value.upper()))
+                setattr(current, name, AC_ID.findall(value.upper()))
             elif name == "report":
                 current.report = _clean_command(value) or None
                 if not current.report:
@@ -300,7 +388,43 @@ def parse_plan(text: str) -> Plan:
                 plan.problems.append(f"plan.md line {number}: Proof entries look like `- AC-001: test id`")
             else:
                 listing = None
+    if plan.final is not None and not plan.final.verify:
+        plan.problems.append("Final verification needs executable Verify commands; omit the section for manual-only changes")
     return plan
+
+
+def verification_task(plan: Plan, task: Task) -> Task:
+    """Final checks run once and can back multiple task/criterion mappings.
+
+    Per-task Verify remains useful during development. It is never silently
+    deduplicated: effects and intentional repetition cannot be inferred from
+    command strings. A Final verification section explicitly selects sharing.
+    """
+    if plan.final is None:
+        return task
+    return replace(task, id="FINAL", verify=plan.final.verify, report=plan.final.report,
+                   proof={ident: proof for ident, proof in plan.final.proof.items() if ident in task.tests})
+
+
+def plan_commitments(text: str) -> str:
+    """Approved design/scope/final checks, excluding operational decomposition.
+
+    Task edits still face coverage/scope validation and invalidate candidate
+    evidence. In guided plans with final verification they do not require a
+    new human decision just because the implementation gained a subtask.
+    """
+    meta, body = frontmatter.split(text)
+    lines = []
+    skipping = False
+    for line in body.splitlines():
+        if re.match(r"^##\s+(Tasks|Tareas|Tarefas)\s*$", line, re.I) or TASK_HEADING.match(line):
+            skipping = True
+            continue
+        if HEADING2.match(line):
+            skipping = False
+        if not skipping:
+            lines.append(line)
+    return frontmatter.compose(meta, "\n".join(lines).strip() + "\n")
 
 
 def parse_review(text: str) -> Review:
@@ -323,7 +447,7 @@ def parse_review(text: str) -> Review:
             if any(item.id == ident for item in review.findings):
                 review.problems.append(f"review.md line {number}: duplicate finding {ident}")
             review.findings.append(Finding(ident, finding.group(2).lower(), finding.group(3)))
-        elif re.match(r"^\s*[-*]\s+(?:AC-\d+|F\d+)\b", line, re.I):
+        elif re.match(rf"^\s*[-*]\s+(?:{AC_PATTERN}|F\d+)\b", line, re.I):
             review.problems.append(f"review.md line {number}: malformed verdict or finding")
     return review
 
@@ -356,7 +480,7 @@ def load_evidence(directory: Path) -> tuple[dict[str, Evidence], list[str]]:
             data = json.loads(path.read_text(encoding="utf-8"))
             evidence = Evidence(path, str(data["task"]), data.get("tree"), str(data["result"]),
                                 str(data.get("finished", "")), list(data.get("commands", [])), data)
-            if not re.fullmatch(r"T[1-9][0-9]*", evidence.task):
+            if not re.fullmatch(r"T[1-9][0-9]*|FINAL", evidence.task):
                 raise ValueError("invalid task id")
             if not all(isinstance(command, dict) for command in evidence.commands):
                 raise ValueError("commands must be objects")

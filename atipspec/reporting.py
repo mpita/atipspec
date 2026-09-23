@@ -1,12 +1,14 @@
 """Portable acceptance dossiers and requirement-to-evidence matrices."""
 from __future__ import annotations
 
+from .specs import load_spec
+
 import html
 import json
 from pathlib import Path
 
 from .check import check_delivery
-from .delivery import load_evidence, parse_plan, parse_review, parse_spec
+from .delivery import load_evidence, parse_plan, parse_review, parse_spec, verification_task
 from .junit import find, recorded_cases
 from .locale import code as language_code, strings
 from .trust import approvals_for, timestamp, digest, read_regular
@@ -16,16 +18,21 @@ from .errors import AtipSpecError
 def report_data(project, slug, policy=None, report=None):
     directory = project.delivery_dir(slug)
     report = report or check_delivery(project, slug, policy=policy)
-    spec = parse_spec((directory / "spec.md").read_text())
+    spec = load_spec(project, slug)
     plan = parse_plan((directory / "plan.md").read_text())
     review_path = directory / "review.md"
     review = parse_review(review_path.read_text() if review_path.is_file() else "")
     evidence, _ = load_evidence(directory / "evidence")
+    from dataclasses import replace
+    task_views = [replace(verification_task(plan, task), id=task.id) for task in plan.tasks]
+    if plan.final:
+        shared = evidence.get("FINAL")
+        evidence = {task.id: shared for task in plan.tasks} if shared else {}
     matrix = []
     capability = spec.capability or slug
     for req in spec.requirements:
         for ac in req.criteria:
-            tasks = [task for task in plan.tasks if ac.id in task.tests + task.manual]
+            tasks = [task for task in task_views if ac.id in task.tests + task.manual]
             matrix.append({"requirement": f"{capability}/{req.id}", "criterion": f"{capability}/{ac.id}",
                            "description": ac.text, "tasks": [t.id for t in tasks],
                            "tests": [{"task": t.id, "test": t.proof[ac.id],
@@ -45,13 +52,22 @@ def report_data(project, slug, policy=None, report=None):
                 approvals.extend(approvals_for(project, slug, phase, policy, spec.meta.get("owner")))
             except (AtipSpecError, OSError):
                 pass
+    else:
+        from .accept import PHASES, is_current, read_record
+        for phase in PHASES:
+            if is_current(project, slug, phase):
+                record = read_record(project, slug, phase)
+                approvals.append({"phase": phase, "identity": record["by"], "role": "local declaration",
+                                  "approved_at": record["accepted_at"], "subject": record["subject"],
+                                  "source": "local", "authenticated": False})
     artifacts = {}
     for path in sorted(directory.rglob("*")):
         if path.is_file() and "reports" not in path.relative_to(directory).parts:
             artifacts[str(path.relative_to(directory))] = digest(read_regular(path))
     return {"schema": 1, "generated_at": timestamp(), "delivery": slug, "title": spec.title,
             "owner": spec.meta.get("owner"), "ticket": spec.meta.get("ticket"),
-            "status": report.status, "accepted": bool(policy and report.ok and report.status == "verified"),
+            "status": report.status, "accepted": bool(report.ok and report.status in ("verified", "accepted")),
+            "acceptance_mode": "trusted" if policy else "local", "authenticated": bool(policy),
             "head": project.git.head(), "tree": report.fingerprint, "policy_sha256": policy.sha256 if policy else None,
             "policy_version": policy.data["version"] if policy else None,
             "language": project.language,

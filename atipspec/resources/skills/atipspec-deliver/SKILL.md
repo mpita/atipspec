@@ -1,12 +1,13 @@
 ---
 name: atipspec-deliver
-description: AtipSpec phase deliver. Use when the gate is green and verified and the user wants the delivery merged into the living spec and archived. Ends at stop point 2, the user's merge.
+description: Present and archive a reviewed ATIPSpec result after explicit human acceptance.
 ---
 
-# Phase deliver
+Run `atipspec check <slug>` and present `atipspec report <slug>` plus the observable
+result. Local checked means ready to inspect. Ask for result acceptance only when
+it has not already been explicitly given; use `atipspec accept <slug> result` to
+record the user's instruction. Then run `atipspec deliver <slug>`.
 
-1. Run `atipspec check <slug> --policy <external policy>`; it must be green and
-   `verified`. A local `checked` is not acceptance: report what is missing.
-2. Run `atipspec deliver <slug> --policy <external policy>`, commit, and ask the
-   user to merge the branch. AtipSpec never pushes or merges.
-3. If the command refuses, tell the user what it asks for and stop.
+When an external policy is configured, use its authenticated acceptance procedure.
+Do not substitute a local declaration for corporate approval. Commits, push, merge
+and deployment require the authorization defined for this repository.

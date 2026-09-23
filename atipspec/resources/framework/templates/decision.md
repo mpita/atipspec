@@ -10,7 +10,8 @@ date: null
 # {{id}}: {{title}}
 
 <!--
-status: proposed, accepted, superseded or rejected. Only the user sets accepted.
+status: proposed, accepted, superseded or rejected. Only the human decides acceptance;
+the assistant may record accepted after explicit approval of this decision's content.
 affects: capability names, `contract`, `contract:<section>`, or `*` for everything;
 `atipspec context` loads accepted decisions whose affects match the delivery.
 -->

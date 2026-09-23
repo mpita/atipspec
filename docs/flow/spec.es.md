@@ -1,5 +1,10 @@
 # spec
 
+Estos ejemplos muestran la secuencia antigua de spec y plan. En las entregas
+guiadas revisas comportamiento, enfoque y pruebas juntos y apruebas una sola vez
+en la conversación; el agente registra `accept <slug> proposal`. El agente puede
+ejecutar todos los comandos de aprobación local tras tu confirmación explícita.
+
 **De la intención a una spec que el revisor puede verificar.** La fase donde
 decides qué se construye.
 
@@ -118,7 +123,7 @@ Acceptance criteria:
 ## Tu parte
 
 Léela como el contrato que es. Cambia el texto, añade criterios, recorta el
-scope. Cuando diga lo que quieres, ejecuta:
+scope. Cuando diga lo que quieres, aprueba en la conversación. Para una spec antigua, el agente ejecuta:
 
 ```bash
 atipspec accept password-reset spec
@@ -127,8 +132,7 @@ atipspec accept password-reset spec
 Se niega mientras haya una pregunta abierta o un requisito sin criterio; si
 no, pone `status: ready` y registra un hash de la spec y del contrato. A
 partir de ahí, cualquier edición a cualquiera de los dos ficheros devuelve la
-entrega a draft hasta que aceptes de nuevo. El modelo nunca ejecuta este
-comando.
+entrega a draft hasta que aceptes de nuevo. El agente ejecuta este comando solo tras tu aprobación explícita en la conversación.
 
 !!! note "Cambiar la spec después"
     Si el build revela que un criterio no se puede cumplir, el modelo debe

@@ -6,6 +6,8 @@ A signature proves possession of an enrolled key, not biological humanity.
 """
 from __future__ import annotations
 
+from .specs import load_spec
+
 from dataclasses import dataclass
 from datetime import datetime, timezone
 import hashlib
@@ -193,7 +195,27 @@ def subject(project, slug: str, phase: str) -> str:
         if kind == "plan":
             paths.append(directory / "plan.md")
         paths.append(project.contract)
+        spec = load_spec(project, slug)
+        if spec.meta.get("schema") == 2:
+            from .specs import canonical_path
+            paths.extend([canonical_path(project, spec), directory / "baseline.json"])
+            paths.extend(path for path in (project.dot / "config.yaml", project.dot / "adapter.json") if path.exists())
+            paths.extend(path for path in (project.dot / "teams.json", directory / "contracts.json") if path.exists())
         content = {project.rel(p): digest(read_regular(p)) for p in paths}
+        if spec.meta.get("schema") == 2:
+            from . import frontmatter
+            from .delivery import parse_plan, plan_commitments
+            spec_path = directory / "spec.md"
+            meta, body = frontmatter.split(read_regular(spec_path).decode("utf-8"))
+            meta.pop("status", None)
+            content[project.rel(spec_path)] = digest(frontmatter.compose(meta, body).encode("utf-8"))
+            if kind == "plan":
+                plan_path = directory / "plan.md"
+                plan_text = read_regular(plan_path).decode("utf-8")
+                # Legacy per-task verification remains part of approval until
+                # explicitly moved into a final verification section.
+                if parse_plan(plan_text).final is not None:
+                    content[project.rel(plan_path)] = digest(plan_commitments(plan_text).encode("utf-8"))
     elif kind == "decision" and re.fullmatch(r"DEC-\d{3,}", ident):
         paths = list(project.decisions.glob(f"{ident}-*.md"))
         if len(paths) != 1:
@@ -222,7 +244,7 @@ def approve(project, slug: str, phase: str, identity: str, key: Path, policy: Tr
     role = PHASE_ROLES.get(phase.split(":")[0])
     if role is None:
         raise AtipSpecError("Unknown approval phase")
-    spec = parse_spec((project.delivery_dir(slug) / "spec.md").read_text())
+    spec = load_spec(project, slug)
     if identity == spec.meta.get("owner"):
         raise AtipSpecError("The declared delivery owner cannot approve their own work")
     if role == "risk" and (not expires or date_time(expires) <= datetime.now(timezone.utc)):

@@ -68,18 +68,27 @@ def prerequisites(project: Project, phase: str, slug: str, report: Report) -> No
         return
     if phase in ("spec", "fix"):
         from .delivery import parse_spec
-        kind = parse_spec((project.delivery_dir(slug) / "spec.md").read_text(encoding="utf-8")).kind
+        spec = parse_spec((project.delivery_dir(slug) / "spec.md").read_text(encoding="utf-8"))
+        kind = spec.kind
         if phase == "fix" and kind != "fix":
             raise _refuse(f"{slug} is not a fix delivery: create one with `atipspec new <slug> --title ... --kind fix`, "
                           "or use `atipspec spec` for this one")
         if phase == "spec" and kind == "fix":
             raise _refuse(f"{slug} is a fix delivery: use `atipspec fix {slug}`; a fix has no interview")
-        if not contract_accepted(project):
+        if spec.meta.get("schema") != 2 and not contract_accepted(project):
             raise _refuse("the architecture contract is not accepted yet: run the contract phase "
-                          "(`atipspec contract`) and ask the user to run `atipspec accept contract`; "
-                          "never set its status yourself")
+                          "(`atipspec contract`), present it for approval in the conversation, "
+                          "then record the user's explicit confirmation with `atipspec accept contract`")
         return
     if phase == "plan":
+        from .specs import load_spec
+        spec = load_spec(project, slug)
+        if spec.meta.get("schema") == 2:
+            preview = check_delivery(project, slug, preapproval=True)
+            blocked = preview.blocking(("spec",))
+            if blocked or spec.open_questions:
+                raise _refuse("the spec is not ready: complete the scenarios and resolve questions before planning")
+            return
         blocked = report.blocking(("spec",))
         if report.status == "draft" or blocked:
             raise _refuse("the spec is not ready: " + (_first(blocked) if blocked else report.next_action))
@@ -88,14 +97,14 @@ def prerequisites(project: Project, phase: str, slug: str, report: Report) -> No
         if report.status in ("draft", "ready"):
             raise _refuse("there is no plan to build from: " + report.next_action)
         # Contract definition problems block; file violations are what build fixes.
-        blocked = report.blocking(("spec", "plan", "base", "contract"))
+        blocked = report.blocking(("spec", "plan", "base", "contract", "coordination"))
         if blocked:
             raise _refuse("the plan is not valid: " + _first(blocked))
         return
     if phase == "review":
         if report.status in ("draft", "ready"):
             raise _refuse("nothing to review yet: " + report.next_action)
-        blocked = report.blocking(("spec", "plan", "base", "contract", "violation", "tasks", "evidence", "deferred"))
+        blocked = report.blocking(("spec", "plan", "base", "contract", "coordination", "violation", "tasks", "evidence", "deferred"))
         if blocked:
             raise _refuse("the delivery is not ready for review: " + _first(blocked))
         if report.tasks_total and report.tasks_done < report.tasks_total:
@@ -125,7 +134,7 @@ def enter(project: Project, phase: str, slug: str, with_context: bool = True) ->
     parts = [header(phase, report, slug), "", workflow_text(project, phase)]
     if phase == "build":
         pending = [item.text for item in report.items if item.source == "tasks" and item.level == "todo"]
-        parts += ["Next task: " + (pending[0] if pending else "all tasks are committed; continue with the review"), ""]
+        parts += ["Next task: " + (pending[0] if pending else "all tasks are complete; continue with the review"), ""]
     parts += [rules_text(project)]
     if with_context:
         sections, summary = build_context(project, slug)
@@ -191,7 +200,7 @@ def ship(project: Project, slug: str) -> str:
     if phase in ("spec", "fix"):
         lines.append(f"  stop point 1 follows: {STOP_POINTS['spec']}")
     if phase == "deliver":
-        lines.append(f"  requires the external trust policy; then {STOP_POINTS['deliver']}")
-    command = f"atipspec {phase} {slug}" + (" --policy <external policy>" if phase == "deliver" else "")
+        lines.append("  the user accepts the reviewed result before archiving; integration follows repository policy")
+    command = f"atipspec {phase} {slug}"
     lines.append(f"Run: {command}")
     return "\n".join(lines) + "\n"

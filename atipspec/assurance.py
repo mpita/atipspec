@@ -1,11 +1,13 @@
 """Evidence validation, attestation and release requirements."""
 from __future__ import annotations
 
+from .specs import load_spec
+
 from datetime import datetime, timezone
 import json
 from pathlib import Path
 
-from .delivery import load_evidence, parse_plan, parse_spec
+from .delivery import load_evidence, parse_plan, parse_spec, verification_task
 from .errors import AtipSpecError
 from .trust import approvals_for, date_time, read_regular, sign_document, digest
 
@@ -49,6 +51,8 @@ def evidence_problems(record, task, slug):
     if any(code is not None and (not isinstance(code, int) or isinstance(code, bool)) for code in codes):
         problems.append("invalid command exit code")
     computed = "pass" if codes and all(type(code) is int and code == 0 for code in codes) else "fail"
+    if any(entry.get("error") or entry.get("failed", 0) for entry in data.get("reports") or []):
+        computed = "fail"
     if record.result != computed:
         problems.append("evidence result contradicts command exit codes")
     if not record.tree or data.get("tree_after") != record.tree:
@@ -81,7 +85,7 @@ def attest(project, slug, policy, identity, key: Path, run_url: str):
         raise AtipSpecError("; ".join(problems))
     tree = project.fingerprint()
     pending = []
-    for task in plan.tasks:
+    for task in ([plan.final] if plan.final else plan.tasks):
         if not task.verify:
             continue
         record = evidence.get(task.id)
@@ -99,7 +103,7 @@ def attest(project, slug, policy, identity, key: Path, run_url: str):
 
 
 def require_preflight(project, slug, policy):
-    spec = parse_spec((project.delivery_dir(slug) / "spec.md").read_text())
+    spec = load_spec(project, slug)
     if spec.status != "ready" or spec.problems or spec.open_questions:
         raise AtipSpecError("Finish the specification before verification")
     for phase in ("spec", "plan"):
@@ -130,7 +134,8 @@ def check_assurance(project, slug, policy, report, spec, plan, evidence):
         report.add("error", f"corporate policy: {problem}")
     for violation in evaluate(contract, project.root, repository_files(project), manifests_always=True):
         report.add("error", f"corporate policy: {violation.render()}")
-    for rule in missing_commands(contract, [command for task in plan.tasks for command in task.verify]):
+    commands = plan.final.verify if plan.final else [command for task in plan.tasks for command in task.verify]
+    for rule in missing_commands(contract, commands):
         report.add("error", f"corporate policy requires command: {rule.args[0]}")
     approvals = {}
     for phase in ("spec", "plan", "acceptance"):
@@ -145,6 +150,7 @@ def check_assurance(project, slug, policy, report, spec, plan, evidence):
     criteria = {ac.id: ac.requirement for ac in spec.criteria}
     covered = set()
     for task in plan.tasks:
+        task = verification_task(plan, task)
         for ac in task.tests + task.manual:
             if criteria.get(ac) not in task.covers:
                 report.add("error", f"{task.id}: {ac} must belong to a requirement in Covers")

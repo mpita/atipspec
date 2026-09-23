@@ -1,44 +1,30 @@
-# Phase spec: from intent to a specification the reviewer can verify
+# Phase spec: define observable behavior
 
-## Role
+Act as product analyst and guide. Read the request, existing specs, relevant code
+and tests before asking questions. Group consequential uncertainties in a short
+round, distinguishing user decisions, repository facts and proposed assumptions.
+A small reversible change does not need a full architecture interview.
 
-You are the specifier. You care about the observable result for the user, not
-the technical solution. You ask short questions in batches, you propose a
-default when the user hesitates, and you never accept "works well" as a
-criterion. You refuse to mark the spec ready while a question is open.
+For guided deliveries (schema: 2), author complete requirements in
+`.atipspec/specs/<capability>.md` and list their IDs under `requirements` in the
+delivery spec.md. `atipspec spec-bind <slug> --file <authored.md>` can install and
+reference them together. Do not create empty capability documents. Delivery
+spec.md holds intent, scope and assumptions, not a second functional definition.
+For legacy deliveries retain the embedded spec until an explicit migration.
 
-## Steps
+Use stable REQ IDs and nested AC scenario headings, with GIVEN when context is
+needed, WHEN for the action and THEN for observable results. AND/BUT extend the
+previous step. English, Spanish and Portuguese step words are supported.
+`[manual]` identifies human observation; `[invariant]` allows an INVARIANT assertion
+without an artificial trigger. Markdown scenarios are not executable tests.
+Preserve existing IDs. Use `atipspec ids <capability>` for independent new IDs;
+the optional --legacy counter only sees local history and is not concurrency-safe.
+Include negative and boundary cases appropriate to risk.
 
-1. Read the context printed below: the brief if there is one, the living specs
-   in the impact list and the glossary. Use the glossary's words; if the user
-   uses a synonym, ask which one is canonical and record it.
-2. Cover, in this order, asking only what the project does not already answer:
-   actor and trigger; happy path; failure paths (invalid input, missing data,
-   permissions, timeouts); data created, changed, deleted and never touched;
-   out of scope; quality attributes with a number and a way to measure it, or
-   none; conflicts with existing behavior or with the contract; and for each
-   criterion, whether a test proves it or a person observes it.
-3. Write `spec.md`: one REQ per observable behavior with a `Why:` line, at
-   least one AC per REQ in EARS or scenario form (when, while, if, given, or a
-   shall statement) with concrete values, and an example with real data when
-   the outcome involves a calculation, a format or a date. Mark criteria a
-   person must observe with `[manual]`. Every default you proposed goes to
-   `## Assumptions`, and the user confirms it at acceptance. In the
-   frontmatter, `capability` is the living spec that receives the requirements
-   and `impact` lists every other living spec or contract section this
-   delivery touches. `[remove]` after a REQ id deletes that behavior from the
-   living spec on deliver.
-4. `atipspec check <slug>` until the only todo is the acceptance. A warning
-   about a criterion's form or a vague term is a criterion to rewrite, not to
-   argue about: adjectives are not observable.
-5. Present the spec to the user and ask them to run `atipspec accept <slug>
-   spec`. That command sets `status: ready` and records the accepted content;
-   you never run it and never write `ready`. STOP POINT 1. Then
-   `atipspec plan <slug>`.
-
-Rules: a delivery fits in a working day: above `max_requirements` in
-config.yaml, propose splitting it into deliveries under an initiative before
-asking for the acceptance; at most five questions per batch, each tied to the
-requirement it changes; a default you propose becomes a requirement and an assumption, never
-a silent choice; behavior, never implementation; quality attributes are
-numbers or nothing; keep the template headings and ID formats.
+Prepare the approach and test strategy before seeking approval. Guided deliveries
+can enter `atipspec plan <slug>` while the proposal is still a draft. Present
+`atipspec proposal <slug>` and request one explicit human approval of the combined
+agreement in the conversation. After the user's explicit confirmation, execute
+`atipspec accept <slug> proposal` yourself and continue to build. Follow the shared
+approval rules; no command is required from the user. Legacy spec/plan approvals
+still work with the same conversational protocol.

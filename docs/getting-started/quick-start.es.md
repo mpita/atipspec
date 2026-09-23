@@ -1,5 +1,10 @@
 # Primeros pasos
 
+Estos ejemplos muestran la secuencia antigua de spec y plan. En las entregas
+guiadas revisas comportamiento, enfoque y pruebas juntos y apruebas una sola vez
+en la conversación; el agente registra `accept <slug> proposal`. El agente puede
+ejecutar todos los comandos de aprobación local tras tu confirmación explícita.
+
 Empieza con la spec y la verificación locales, luego configura la
 aceptación de confianza. Los ejemplos usan Claude Code; la [página de
 clientes](../clients.md) muestra el equivalente en los demás.
@@ -66,16 +71,15 @@ Acceptance criteria:
 ```
 
 Cuando la puerta dice que la spec está completa, el modelo la presenta y
-espera. Este es el **punto de parada 1**: léela, corrígela, y acéptala tú
-mismo:
+espera. Este es el **punto de parada 1**: léela, pide cambios o aprueba en la
+conversación. El agente registra tu confirmación:
 
 ```bash
 atipspec accept password-reset spec
 ```
 
 Eso pone `status: ready` y registra lo que aceptaste; si alguien edita la
-spec después, la puerta te vuelve a preguntar. El modelo nunca ejecuta este
-comando.
+spec después, la puerta te vuelve a preguntar. El agente registra tu aprobación explícita en la conversación con este comando.
 
 ## 4. Plan, build, review
 

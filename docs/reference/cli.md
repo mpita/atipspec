@@ -88,12 +88,14 @@ re-entering a phase in the same session.
 ### `atipspec accept`
 
 ```text
+atipspec accept SLUG proposal [--by WHO]
+atipspec accept SLUG result [--by WHO]
 atipspec accept SLUG spec [--by WHO]
 atipspec accept SLUG plan [--by WHO]
 atipspec accept contract
 ```
 
-Run by a person, never by the model. `spec` refuses while a requirement has
+The human approves in the conversation; the assistant then runs this command. Manual use remains available. `spec` refuses while a requirement has
 no criterion or a question is open; otherwise it sets `status: ready` and
 writes `approvals/local-spec.json` with a hash of `spec.md` and the contract.
 `plan` requires an accepted spec and a plan without errors, and records the
@@ -101,8 +103,7 @@ hash of spec, plan and contract. `contract` sets `status: accepted` in
 `contract.md`. `--by` defaults to git's `user.email`.
 
 `check` compares the recorded hash with the files: after any edit the
-delivery is a draft again (or the plan is unaccepted) until the person runs
-the command again. With `--policy`, signed approvals rule and these records
+delivery is a draft again (or the plan is unaccepted) until the human approves the changed content and acceptance is recorded again. With `--policy`, signed approvals rule and these records
 are ignored.
 
 ## Deliveries

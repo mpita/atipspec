@@ -34,7 +34,8 @@ def required_verify(project: Project) -> str:
 def new_delivery(project: Project, slug: str, title: str, *, capability: str | None = None,
                  impact: list[str] | None = None, owner: str | None = None, ticket: str | None = None,
                  initiative: str | None = None, branch: bool = False, worktree: bool = False,
-                 kind: str = "feature") -> Path:
+                 kind: str = "feature", branch_name: str | None = None,
+                 reuse_branch: bool = False, depends_on: list[str] | None = None) -> Path:
     validate_slug(slug)
     if kind not in KINDS:
         raise AtipSpecError(f"Unknown kind {kind!r}: use feature or fix")
@@ -42,6 +43,14 @@ def new_delivery(project: Project, slug: str, title: str, *, capability: str | N
         validate_slug(capability, "capability")
     for name in impact or []:
         validate_slug(name, "impact entry")
+    for name in depends_on or []:
+        validate_slug(name, "dependency")
+        if name == slug:
+            raise AtipSpecError("A delivery cannot depend on itself")
+    if (branch_name or reuse_branch) and not (branch or worktree):
+        raise AtipSpecError("--branch-name and --reuse-branch need --branch or --worktree; omit them to keep the current branch")
+    if reuse_branch and not branch_name:
+        raise AtipSpecError("--reuse-branch needs an explicit --branch-name")
     if initiative and not (project.initiatives / initiative / "roadmap.md").is_file():
         raise AtipSpecError(f"Initiative not found: {initiative}. Create it with `atipspec initiative {initiative} --title ...`")
     if (project.deliveries / slug).exists() or (project.archive / slug).exists():
@@ -50,14 +59,35 @@ def new_delivery(project: Project, slug: str, title: str, *, capability: str | N
     if branch or worktree:
         if not project.git.available:
             raise AtipSpecError("--branch and --worktree need a git repository.")
-        name = f"delivery/{slug}"
+        name = branch_name or f"delivery/{slug}"
+        if name.startswith("-"):
+            raise AtipSpecError("Invalid branch name")
+        project.git.run("check-ref-format", "--branch", name)
+        if reuse_branch and not project.git.rev_exists(f"refs/heads/{name}"):
+            raise AtipSpecError(f"Existing local branch not found: {name}")
+        source_ref = f"refs/heads/{name}" if reuse_branch else "HEAD"
+        if worktree or reuse_branch:
+            if not project.git.exists_at(source_ref, ".atipspec/config.yaml"):
+                raise AtipSpecError("The target revision has no committed ATIPSpec configuration; initialize it or use the current checkout before creating an isolated delivery")
+            for path in (f".atipspec/deliveries/{slug}/spec.md", f".atipspec/archive/{slug}/spec.md"):
+                if project.git.exists_at(source_ref, path):
+                    raise AtipSpecError(f"The target revision already contains delivery {slug}")
+            if initiative and not project.git.exists_at(source_ref, f".atipspec/initiatives/{initiative}/roadmap.md"):
+                raise AtipSpecError("The initiative is not present in the target revision")
         if worktree:
             root = project.root.parent / f"{project.root.name}-{slug}"
             if root.exists():
                 raise AtipSpecError(f"{root} already exists.")
-            project.git.add_worktree(root, name)
+            if reuse_branch:
+                project.git.run("worktree", "add", str(root), name)
+            else:
+                project.git.add_worktree(root, name)
         else:
-            project.git.create_branch(name)
+            if reuse_branch:
+                project.git.run("switch", name)
+            else:
+                project.git.create_branch(name)
+        project = Project.find(root)
     base = project.git.head() if project.git.available else None
     directory = root / ".atipspec" / "deliveries" / slug
     replacements = {"title": title, "slug": slug, "verify": required_verify(project)}
@@ -65,6 +95,8 @@ def new_delivery(project: Project, slug: str, title: str, *, capability: str | N
     meta = {"title": title, "status": "draft", "capability": capability or slug, "impact": list(impact or []),
             "owner": owner, "ticket": ticket, "initiative": initiative, "base": base,
             "created": datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")}
+    if depends_on:
+        meta["depends_on"] = list(dict.fromkeys(depends_on))
     if kind == "fix":
         meta = {"title": title, "status": "draft", "kind": "fix", **{k: v for k, v in meta.items() if k not in ("title", "status")}}
     files = {
@@ -72,6 +104,15 @@ def new_delivery(project: Project, slug: str, title: str, *, capability: str | N
         "plan.md": _from_template(f"{prefix}plan.md", {"title": title}, replacements),
         "deferred.md": _from_template("deferred.md", {"title": title}, replacements),
     }
+    if kind == "feature":
+        import json
+        from uuid import uuid4
+        from .specs import baseline
+        meta.update({"schema": 2, "change_id": uuid4().hex, "requirements": [], "risk": "normal"})
+        files["spec.md"] = frontmatter.compose(meta, f"\n# {title}\n\n## Intent\n\n"
+                                               "<!-- Actor, observable result and scope. -->\n\n"
+                                               "## Assumptions\n\n- None\n\n## Open questions\n\n- None\n")
+        files["baseline.json"] = json.dumps(baseline(project, capability or slug), ensure_ascii=False, indent=2) + "\n"
     from .traceability import next_ids
     req_no, ac_no = next_ids(project, capability or slug)
     for filename in ("spec.md", "plan.md"):

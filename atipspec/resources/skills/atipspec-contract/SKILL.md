@@ -7,5 +7,8 @@ description: AtipSpec phase contract. Use right after atipspec init, to define o
 
 1. Run `atipspec contract` and do exactly what it prints: role, steps, rules
    and the current contract.
-2. The user accepts the contract with `atipspec accept contract`; you never
-   set its status or run that command yourself.
+2. Present the contract and the decision IDs it includes. Offer approval,
+   changes or cancellation in the same conversation, following the printed rules.
+3. After explicit human approval of that content, record the included decisions
+   as accepted and run `atipspec accept contract` yourself. Continue with the
+   requested delivery. Never require the user to edit a status or run a command.

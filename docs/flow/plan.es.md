@@ -1,5 +1,10 @@
 # plan
 
+Estos ejemplos muestran la secuencia antigua de spec y plan. En las entregas
+guiadas revisas comportamiento, enfoque y pruebas juntos y apruebas una sola vez
+en la conversación; el agente registra `accept <slug> proposal`. El agente puede
+ejecutar todos los comandos de aprobación local tras tu confirmación explícita.
+
 **De una spec ready a tareas que la puerta puede demostrar.** La fase donde
 se decide el cumplimiento de la arquitectura.
 
@@ -57,8 +62,8 @@ Verify:
 ```
 
 4. `atipspec check password-reset` hasta que no haya errores de plan.
-5. Te muestra el plan si `approve_plan` está activado y te pide que ejecutes
-   `atipspec accept password-reset plan`; `atipspec build` se niega hasta
+5. Te muestra el plan si `approve_plan` está activado, pide aprobación en la conversación
+   y registra tu confirmación explícita con `atipspec accept password-reset plan`; `atipspec build` se niega hasta
    entonces. Una tarea añadida durante el build cambia el plan, así que lo
    aceptas de nuevo.
 

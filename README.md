@@ -2,11 +2,11 @@
 
 Spec-driven delivery with verifiable evidence and human acceptance.
 
-**Current version: 0.1.0.** See the [release history](CHANGELOG.md).
+**Current version: 0.2.0.** See the [release history](CHANGELOG.md).
 
 AtipSpec connects requirements, tasks, executable verification, review and
 approval. It works with Claude Code, Codex, Cursor, Copilot, Gemini CLI and
-Antigravity. Python 3.11+, Git; OpenSSH (`ssh-keygen -Y`) for trusted signatures.
+Antigravity. Python 3.11+, Git. Optional trusted signatures use OpenSSH (`ssh-keygen -Y`).
 No third-party Python runtime dependencies. MIT licensed.
 
 **Documentation:** <https://mpita.github.io/atipspec/>
@@ -27,22 +27,50 @@ required step is missing and otherwise prints the workflow, the rules and the
 context. The developer leads; the model proposes. A local CLI cannot establish
 that a human approved simply because a Markdown field says so.
 
+Approve in the same conversation: the assistant presents the agreement and offers
+**Approve and continue**, **Request changes** or **Cancel**. Use the client's
+selector when available, or reply in plain language. After explicit confirmation,
+the assistant records acceptance and continues; you do not have to type commands
+or edit statuses. Contract approval can include the listed architecture decisions.
+Changed agreements need renewed approval, and the finished result has its own
+acceptance. External trust policies retain their authenticated procedure.
+
+The commands below are what the assistant runs (also available for manual use):
+
 ```sh
-atipspec accept contract                 # you, once per project
-atipspec accept password-reset spec      # you, at stop point 1; the model never runs it
-atipspec accept password-reset plan      # you, when approve_plan is on
+atipspec proposal password-reset         # review scenarios, approach, tests and diff
+atipspec accept password-reset proposal  # explicit human approval of the agreement
+# The agent implements and records tasks with task-done; no commits are required.
 atipspec verify password-reset
 atipspec review password-reset
 atipspec check password-reset
+atipspec report password-reset           # inspect the reviewed result and evidence
+atipspec accept password-reset result    # explicit human result acceptance
+atipspec deliver password-reset          # local archive; does not commit, push or merge
 ```
 
-`accept` records a hash of what you accepted; any edit afterwards sends the
-delivery back to you. Plans declare the files they will touch (`scope`) and,
+For existing projects, install the updated ATIPSpec package, then have the agent
+run `atipspec install --update` in the target project to refresh the framework and
+installed skills. This replaces customized framework/skill files; inspect the
+changes first. Reload the client's skills or start a fresh session if it has
+cached the old instructions.
+
+New feature deliveries reference canonical requirements in `.atipspec/specs/`.
+Write complete scenarios there or use `spec-bind <slug> --file <authored.md>`;
+empty capabilities are not created. `proposal` shows changes from the baseline.
+Existing embedded specs remain supported. A plan's `## Final verification`
+commands execute once for the finished candidate and can support multiple tasks.
+Task-level Verify commands remain available for focused development checks.
+
+`accept` records a hash of what you accepted; changing the agreement invalidates
+its approval. Plans declare the files they will touch (`scope`) and,
 when the tests write JUnit XML, the test that proves each criterion (`Proof:`).
 
 A green local check is **checked**, not **verified**. It checks command/result
 consistency, coverage, tree freshness and structural rules. It does not
-authenticate provenance. `deliver` requires trusted acceptance.
+authenticate provenance. Explicit local result acceptance changes it to
+**accepted** and permits `deliver` without keys or a trust service. Organizations
+can opt into the authenticated **verified** path below.
 
 ## Trusted acceptance
 

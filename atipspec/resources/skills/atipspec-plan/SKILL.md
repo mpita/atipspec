@@ -1,12 +1,9 @@
 ---
 name: atipspec-plan
-description: AtipSpec phase plan. Use when the user wants the tasks for an approved spec, or after stop point 1 in ship mode.
+description: Prepare an ATIPSpec implementation approach and risk-based test strategy for combined proposal approval.
 ---
 
-# Phase plan
-
-1. Run `atipspec plan <slug>` and do exactly what it prints: role, steps, rules
-   and context.
-2. If the command refuses, the spec is not accepted: tell the user what it asks
-   for and stop. When `approve_plan` is on, the person accepts the plan with
-   `atipspec accept <slug> plan`; you never run it.
+Run `atipspec plan <slug>`. Guided deliveries allow planning before approval so the
+human can review scope, scenarios, approach and tests together. Follow the printed
+workflow, resolve contradictions and present `atipspec proposal <slug>`.
+Do not ask for a second approval of unchanged content already explicitly approved.

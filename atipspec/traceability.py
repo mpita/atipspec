@@ -5,6 +5,14 @@ from .delivery import parse_spec
 from .project import validate_slug
 
 
+def concurrent_ids(capability):
+    """Allocate identities without a shared counter or renumbering after merge."""
+    from uuid import uuid4
+    namespace = validate_slug(capability, "capability").upper()
+    component = uuid4().hex.upper()
+    return f"REQ-{namespace}-{component}-001", f"AC-{namespace}-{component}-001"
+
+
 def next_ids(project, capability):
     validate_slug(capability, "capability")
     paths = [project.specs / f"{capability}.md"]
@@ -17,8 +25,8 @@ def next_ids(project, capability):
         if not path.is_file():
             continue
         spec = parse_spec(path.read_text())
-        requirements += [int(req.id[4:]) for req in spec.requirements]
-        criteria += [int(ac.id[3:]) for ac in spec.criteria]
+        requirements += [int(req.id[4:]) for req in spec.requirements if req.id[4:].isdigit()]
+        criteria += [int(ac.id[3:]) for ac in spec.criteria if ac.id[3:].isdigit()]
     return max(requirements) + 1, max(criteria) + 1
 
 
@@ -26,6 +34,13 @@ def merge_conflicts(project, spec, slug=None):
     """Three-way check of the living requirements a delivery intends to replace."""
     capability = spec.capability or slug
     base = spec.meta.get("base")
+    if spec.meta.get("schema") == 2:
+        # The working-branch canonical file IS the proposed content. Comparing
+        # it with the base as an external change would flag every own edit.
+        # Other published branches are checked by team coordination separately.
+        from .specs import baseline_text
+        baseline_text(project, slug)
+        return []
     if not capability or not base or not project.git.rev_exists(base):
         return []
     path = f".atipspec/specs/{validate_slug(capability)}.md"

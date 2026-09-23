@@ -1,14 +1,9 @@
 ---
 name: atipspec-spec
-description: AtipSpec phase spec. Use when the user wants to specify a delivery, write requirements and acceptance criteria, or says "spec it". Ends at stop point 1, the user's approval.
+description: Guide an ATIPSpec requirement discussion and write observable scenarios for a reviewable proposal.
 ---
 
-# Phase spec
-
-1. If the delivery does not exist, create it: `atipspec new <slug> --title "..."`
-   (add `--capability`, `--owner`, `--branch` when the user gives them).
-2. Run `atipspec spec <slug>` and do exactly what it prints. It contains the
-   role, the interview, the rules and the context.
-3. If the command refuses, tell the user what it asks for and stop. Never edit
-   the contract or the spec status, and never run `atipspec accept`: the
-   person does, at stop point 1.
+Run `atipspec spec <slug>` and follow its workflow. Read existing context before
+asking questions. For guided deliveries keep behavior in specs/ and references in
+the delivery. Finish the approach and test strategy before presenting one combined
+proposal. Never invent human approval or silently choose unresolved business rules.

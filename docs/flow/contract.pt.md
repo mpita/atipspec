@@ -6,7 +6,7 @@ mantém a quadragésima entrega nos mesmos trilhos da primeira.
 | | |
 | --- | --- |
 | Papel | O guardião do contrato. Descreve a realidade antes das regras, escreve regras que a CLI pode verificar, nunca muda o contrato dentro de uma entrega de feature. |
-| Quem decide | Você aceita o contrato com `atipspec accept contract`, e cada decisão ao definir seu status. |
+| Quem decide | Você aprova o contrato e as decisões indicadas na conversa; o agente registra sua decisão. |
 | Produz | `contract.md`, `decisions/DEC-nnn-*.md`, as specs vivas iniciais |
 
 ## Como executar
@@ -16,8 +16,9 @@ mantém a quadragésima entrega nos mesmos trilhos da primeira.
 ```
 
 O skill executa `atipspec contract`, que imprime o workflow, as regras e o
-`contract.md` atual. Até você executar `atipspec accept contract`, `atipspec
-spec` se recusa a começar.
+`contract.md` atual. Solicita aprovação na conversa e executa
+`atipspec accept contract` após sua confirmação explícita. Entregas legadas
+exigem um contrato aceito antes de entrar em `spec`.
 
 ## Um novo projeto
 
@@ -59,8 +60,11 @@ require-command "ruff check ."
 ```
 ```
 
-e cria as primeiras specs vivas, uma por capacidade que você nomear. Rode o
-audit até ficar limpo e então aceite:
+As specs vivas são criadas quando seus requisitos estão definidos. O agente
+executa o audit e apresenta o contrato e as decisões incluídas. Escolha **Aprovar e
+continuar**, **Pedir alterações** ou **Cancelar** no seletor do cliente, quando
+disponível, ou responda na conversa. O agente executa estes comandos; `accept`
+somente após sua aprovação explícita:
 
 ```bash
 atipspec audit
@@ -85,8 +89,9 @@ fica vermelha.
 atipspec decision allow-httpx --title "Use httpx for outbound HTTP" --affects contract:dependencies
 ```
 
-Preencha a decisão, defina `status: accepted` quando você concordar, edite o
-`contract.md` na mesma entrega, rode `atipspec audit`.
+O agente prepara a decisão e a alteração do contrato na mesma entrega, executa
+`atipspec audit` e apresenta ambos. Após sua aprovação explícita, registra a decisão
+como `accepted` e executa `atipspec accept contract`.
 
 !!! info "O que as regras podem e não podem verificar"
     As regras são estruturais de propósito: caminhos proibidos, padrões

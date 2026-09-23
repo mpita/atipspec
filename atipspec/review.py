@@ -4,6 +4,8 @@ evidence summary, files outside the declared scope and the diff against the
 change base."""
 from __future__ import annotations
 
+from .specs import load_spec
+
 from pathlib import Path
 
 from .context import decisions_for
@@ -22,7 +24,7 @@ def _read(path: Path) -> str:
 def build_packet(project: Project, slug: str) -> str:
     directory = project.delivery_dir(slug)
     spec_text = _read(directory / "spec.md")
-    spec = parse_spec(spec_text)
+    spec = load_spec(project, slug)
     tree = project.fingerprint()
     review_path = project.rel(directory / "review.md")
     rubric = template("review-rubric.md")
@@ -63,13 +65,13 @@ def build_packet(project: Project, slug: str) -> str:
     parts += ["## Evidence summary", ""]
     if not evidence:
         parts.append("(no evidence recorded)")
-    for task in sorted(evidence, key=lambda ident: int(ident[1:])):
+    for task in sorted(evidence, key=lambda ident: 0 if ident == "FINAL" else int(ident[1:])):
         record = evidence[task]
         fresh = "fresh" if tree and record.tree == tree else "stale"
         parts.append(f"- {task}: {record.result} ({fresh}, {record.finished})")
         for command in record.commands:
             parts.append(f"  - `{command.get('command')}` exit {command.get('exit_code')}")
-        task_plan = next((item for item in plan.tasks if item.id == task), None)
+        task_plan = plan.final if task == "FINAL" else next((item for item in plan.tasks if item.id == task), None)
         for ident, proof in (task_plan.proof.items() if task_plan else []):
             from .junit import find, recorded_cases
             case = find(proof, recorded_cases(record.data))

@@ -2,6 +2,8 @@
 the living documents, decisions, initiatives and overlapping deliveries."""
 from __future__ import annotations
 
+from .specs import load_spec
+
 from . import frontmatter
 from .check import Report, load_contract
 from .contract import evaluate
@@ -71,7 +73,7 @@ def audit_project(project: Project) -> Report:
 
     active: dict[str, list[str]] = {}
     for slug in project.list_deliveries():
-        spec = parse_spec((project.deliveries / slug / "spec.md").read_text(encoding="utf-8"))
+        spec = load_spec(project, slug)
         active[slug] = spec.impact
     slugs = list(active)
     for index, first in enumerate(slugs):

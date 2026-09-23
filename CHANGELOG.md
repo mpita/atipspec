@@ -1,5 +1,48 @@
 # Release history
 
+## 0.2.0 — Guided workflow and conversational approval
+
+- Human approval stays in the assistant conversation. The agent presents the
+  agreement and offers approval, changes or cancellation using the client's
+  selector when available, or a plain reply. After explicit confirmation, it
+  records acceptance and continues; the user need not run approval commands or
+  edit statuses. Contract approval can include the listed architecture decisions.
+- Guided deliveries combine behavior, implementation approach and test strategy
+  in one reviewable proposal. `atipspec proposal <slug>` presents the agreement
+  and specification diff; `accept <slug> proposal` records approval of its content.
+  The reviewed result requires separate human acceptance with `accept <slug> result`.
+  Changed agreements require renewed approval.
+- New feature deliveries reference canonical requirements in `.atipspec/specs/`.
+  `spec-bind` installs complete requirements and their delivery references without
+  creating empty capability documents. Scenarios support GIVEN/WHEN/THEN, AND/BUT,
+  manual criteria and invariants, including Spanish and Portuguese step words.
+- `task-done` records implementation progress without requiring a commit per task.
+  Shared final verification runs against the finished candidate; targeted task
+  checks remain available during development. Local result acceptance permits
+  archiving without signatures. External trust policies retain their authenticated
+  acceptance requirements; commit, push, merge and deployment follow repository policy.
+- Guided skills define responsibilities for the guide, analyst, designer, tester,
+  implementer and reviewer, with checks scaled to risk and explicit disclosure
+  when independent review is unavailable.
+- An optional POSIX process runner supports configured execution adapters,
+  checkpoints, budgets, bounded correction rounds and explicit recovery after
+  interruption. It requires proposal approval and does not approve results itself.
+  It is a foreground runner, not an installed background service; live coding-client
+  integration still requires a wrapper and validation.
+- Team coordination adds capability ownership, concurrent identifiers and
+  integration checks. Migration tooling supports existing specification formats;
+  legacy embedded deliveries remain supported.
+- Updated workflows, skills, CLI guidance and documentation to consistently
+  distinguish the human's decision from the agent's recording of that decision.
+
+### Updating existing projects
+
+Install the new package, then run `atipspec install --update` in each project to
+refresh its framework and installed skills. The agent can perform this update.
+Inspect customizations first: the update replaces framework and skill files that
+differ from the package. Reload cached client skills or start a fresh session.
+Local acceptance detects content drift; it does not authenticate human identity.
+
 ## 0.1.0 — First release
 
 Initial version of AtipSpec, prepared for new projects.

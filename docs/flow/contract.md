@@ -6,7 +6,7 @@ one that keeps the fortieth delivery on the same rails as the first.
 | | |
 | --- | --- |
 | Role | The keeper of the contract. Describes reality before rules, writes rules the CLI can check, never changes the contract inside a feature delivery. |
-| Who decides | You accept the contract with `atipspec accept contract`, and each decision by setting its status. |
+| Who decides | You approve the contract and the listed decisions in the conversation; the assistant records your decision. |
 | Produces | `contract.md`, `decisions/DEC-nnn-*.md`, the initial living specs |
 
 ## How to run it
@@ -16,8 +16,9 @@ one that keeps the fortieth delivery on the same rails as the first.
 ```
 
 The skill runs `atipspec contract`, which prints the workflow, the rules and
-the current `contract.md`. Until you run `atipspec accept contract`,
-`atipspec spec` refuses to start.
+the current `contract.md`. It requests approval in the conversation and runs
+`atipspec accept contract` after your explicit confirmation. Legacy deliveries
+require an accepted contract before entering `spec`.
 
 ## A new project
 
@@ -59,8 +60,11 @@ require-command "ruff check ."
 ```
 ```
 
-and creates the first living specs, one per capability you name. Run the
-audit until it is clean, then accept:
+Living specs are created when their requirements are defined. The assistant runs
+the audit and presents the contract and included decisions. Choose **Approve and
+continue**, **Request changes** or **Cancel** using the client selector when
+available, or reply in the conversation. The assistant runs these commands;
+`accept` only after your explicit approval:
 
 ```bash
 atipspec audit
@@ -85,8 +89,9 @@ delivery whose diff touches `contract.md` without a new file in
 atipspec decision allow-httpx --title "Use httpx for outbound HTTP" --affects contract:dependencies
 ```
 
-Fill the decision, set `status: accepted` when you agree, edit `contract.md`
-in the same delivery, run `atipspec audit`.
+The assistant prepares the decision and contract change in the same delivery,
+runs `atipspec audit` and presents both. After your explicit approval, it records
+the decision as `accepted` and runs `atipspec accept contract`.
 
 !!! info "What the rules can and cannot check"
     Rules are structural on purpose: forbidden paths, forbidden patterns,

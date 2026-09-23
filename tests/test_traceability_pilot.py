@@ -28,7 +28,9 @@ class TraceabilityTests(ProjectCase):
         living.write_text("# auth\n\n### REQ-001: Login\n- AC-001: logs in\n")
         self.assertEqual(next_ids(project, 'auth'), (2, 2))
         self.new_delivery()
-        self.assertIn('REQ-002:', (self.delivery() / 'spec.md').read_text())
+        self.assertNotIn('### REQ-', (self.delivery() / 'spec.md').read_text(),
+                         'guided deliveries reference canonical requirements without empty definitions')
+        self.assertEqual(next_ids(project, 'auth'), (2, 2))
 
     def test_parallel_requirement_collision_is_detected(self):
         project = Project.find(self.root)

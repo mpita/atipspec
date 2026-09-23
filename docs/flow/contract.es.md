@@ -6,7 +6,7 @@ que mantiene la cuadragésima entrega sobre los mismos raíles que la primera.
 | | |
 | --- | --- |
 | Rol | El guardián del contrato. Describe la realidad antes que las reglas, escribe reglas que el CLI puede comprobar, nunca cambia el contrato dentro de una entrega de feature. |
-| Quién decide | Tú aceptas el contrato con `atipspec accept contract`, y cada decisión fijando su status. |
+| Quién decide | Tú apruebas el contrato y las decisiones indicadas en la conversación; el agente registra tu decisión. |
 | Produce | `contract.md`, `decisions/DEC-nnn-*.md`, las specs vivas iniciales |
 
 ## Cómo ejecutarla
@@ -16,8 +16,9 @@ que mantiene la cuadragésima entrega sobre los mismos raíles que la primera.
 ```
 
 El skill ejecuta `atipspec contract`, que imprime el workflow, las reglas y
-el `contract.md` actual. Hasta que ejecutes `atipspec accept contract`,
-`atipspec spec` se niega a empezar.
+el `contract.md` actual. Solicita aprobación en la conversación y ejecuta
+`atipspec accept contract` tras tu confirmación explícita. Las entregas antiguas
+requieren un contrato aceptado antes de entrar en `spec`.
 
 ## Un proyecto nuevo
 
@@ -59,8 +60,11 @@ require-command "ruff check ."
 ```
 ```
 
-y crea las primeras specs vivas, una por cada capacidad que nombres. Ejecuta
-el audit hasta que quede limpio, y luego acepta:
+Las specs vivas se crean cuando sus requisitos están definidos. El agente ejecuta
+el audit y presenta el contrato y las decisiones incluidas. Elige **Aprobar y
+continuar**, **Pedir cambios** o **Cancelar** en el selector del cliente, si está
+disponible, o responde en la conversación. Estos comandos los ejecuta el agente;
+`accept` solo después de tu aprobación explícita:
 
 ```bash
 atipspec audit
@@ -85,8 +89,9 @@ está en rojo.
 atipspec decision allow-httpx --title "Use httpx for outbound HTTP" --affects contract:dependencies
 ```
 
-Rellena la decisión, pon `status: accepted` cuando estés de acuerdo, edita
-`contract.md` en la misma entrega, ejecuta `atipspec audit`.
+El agente prepara la decisión y el cambio de contrato en la misma entrega,
+ejecuta `atipspec audit` y presenta ambos. Tras tu aprobación explícita, registra
+la decisión como `accepted` y ejecuta `atipspec accept contract`.
 
 !!! info "Qué pueden y no pueden comprobar las reglas"
     Las reglas son estructurales a propósito: rutas prohibidas, patrones

@@ -22,7 +22,7 @@ deliveries over months, and two curated documents, `overview.md` and
 
 | Question | Answered by |
 | --- | --- |
-| What do we build? | You, by running `atipspec accept <slug> spec` |
+| What do we build? | You, approving the presented agreement in the conversation |
 | Under which rules? | The contract you accepted with `atipspec accept contract`, enforced by `check` and `audit` |
 | Is a task done? | git: a commit carrying `[slug:Tn]` |
 | Does it pass its checks? | `atipspec verify`, which records exit codes and the tree hash |
@@ -30,9 +30,12 @@ deliveries over months, and two curated documents, `overview.md` and
 | Is it verified? | `check --policy` with trusted CI evidence and product/engineering/QA approvals |
 | Does it ship? | You, by merging |
 
-The model proposes at every step. It never writes evidence, never writes
-verdicts, never marks a task done, never sets `ready`, `accepted` or
-`verified`, and never runs `atipspec accept`.
+The assistant presents the agreement and offers **Approve and continue**, **Request
+changes** or **Cancel**, using the client's selector or a plain reply. After your
+explicit approval, it runs `atipspec accept` and continues. You do not need to run
+commands or edit statuses. The verifier records evidence and the reviewer records
+verdicts; neither can substitute for your decision. Changed agreements need renewed
+approval. External trust policies retain their authenticated procedure.
 
 ## Acceptance you can check
 

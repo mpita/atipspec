@@ -1,5 +1,10 @@
 # plan
 
+These examples show the legacy spec/plan sequence. In guided deliveries, review
+behavior, approach and tests together and approve once in the conversation; the
+assistant records `accept <slug> proposal`. All local approval commands below can
+be run by the assistant after your explicit confirmation.
+
 **From a ready spec to tasks the gate can prove.** The phase where
 architecture compliance is decided.
 
@@ -56,8 +61,8 @@ Verify:
 ```
 
 4. `atipspec check password-reset` until there are no plan errors.
-5. Shows you the plan if `approve_plan` is on and asks you to run
-   `atipspec accept password-reset plan`; `atipspec build` refuses until
+5. Shows you the plan if `approve_plan` is on, asks for approval in the conversation,
+   then records your explicit confirmation with `atipspec accept password-reset plan`; `atipspec build` refuses until
    then. A task added during the build changes the plan, so you accept it
    again.
 
