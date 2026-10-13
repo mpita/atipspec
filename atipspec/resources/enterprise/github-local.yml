@@ -1,0 +1,51 @@
+# Copy to .github/workflows/atipspec-local.yml after pinning the trusted package,
+# and make its job a required check of the target branch.
+# The job runs no command from the candidate and holds no credentials: it reads
+# the branch head and its git history. Nothing may write into the checkout
+# before merge-check, which judges the committed head. The job summary lists
+# each delivery the branch touches with its state and ticket. Run the project's
+# tests in their own job. With `trust: required` in .atipspec/config.yaml this job
+# fails closed: run `merge-check --policy` on the protected worker instead.
+# A pull request runs this workflow as its own branch has it, so the branch can
+# rewrite the check: require it from outside the candidate, with a ruleset that
+# requires this workflow from a protected repository, or with CODEOWNERS on
+# .github/workflows/ and required code owner review. merge-check fails on code a
+# branch changes outside .atipspec/ that no delivery of the branch changed after
+# its base commit, unless exempt_paths in the target branch's
+# .atipspec/config.yaml matches it: list there the files no delivery needs to
+# govern, such as "docs/**". This file is such code: merge the pull request
+# that adds it before you require the job.
+name: AtipSpec merge check
+on: [pull_request, workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  merge-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The branch head, not the synthetic merge commit: an acceptance binds the head's code.
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install trusted verifier
+        env:
+          ATIPSPEC_PACKAGE: ${{ vars.ATIPSPEC_PACKAGE }}
+        # Outside the checkout and isolated (-I): a pip/ or a wheel the candidate commits is never loaded.
+        run: |
+          test -n "$ATIPSPEC_PACKAGE"
+          cd "$RUNNER_TEMP"
+          python -I -m pip install "$ATIPSPEC_PACKAGE"
+      - name: Gate the deliveries this branch touches (merge-check)
+        env:
+          BASE: ${{ github.base_ref || github.event.repository.default_branch }}
+        run: |
+          status=0
+          python -I -m atipspec merge-check --base "origin/$BASE" --format markdown > "$RUNNER_TEMP/merge-check.md" || status=$?
+          tee -a "$GITHUB_STEP_SUMMARY" < "$RUNNER_TEMP/merge-check.md"
+          exit "$status"

@@ -1,0 +1,126 @@
+# Provider mode. Copy to .github/workflows/atipspec-evidence.yml in a separate
+# trusted repository of your organization, such as
+# your-organization/atipspec-trusted, whose default branch only administrators
+# change. Each candidate repository calls it with github-evidence-caller.yml at
+# one commit of that repository, and the trust policy pins the same commit
+# (`[attestation] signer_digest`): in a pull request GitHub runs the workflows
+# the pull request carries, so a workflow inside the candidate repository could
+# be rewritten by the change it attests.
+# Before use: pin ATIPSPEC_PACKAGE to the release or immutable wheel you
+# approved, pin every action to a full commit SHA, and, in a private or
+# internal repository, set Settings > Actions > Access to "Accessible from
+# repositories in the organization".
+name: AtipSpec trusted evidence
+on:
+  workflow_call:
+permissions: {}
+env:
+  ATIPSPEC_PACKAGE: atipspec==0.3.0
+jobs:
+  produce:
+    # Runs the candidate's Verify commands. It can read the repository and
+    # nothing else: no OIDC token and no attestation permission exist here.
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    outputs:
+      records: ${{ steps.verify.outputs.records }}
+      artifact-id: ${{ steps.upload.outputs.artifact-id }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The pull request's head, not the synthetic merge commit: evidence binds the head.
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install trusted verifier
+        # Outside the checkout and isolated (-I): a pip/ or a wheel the candidate commits is never loaded.
+        run: |
+          cd "$RUNNER_TEMP"
+          python -I -m pip install "$ATIPSPEC_PACKAGE"
+      - name: Verify active deliveries from clean evidence
+        id: verify
+        # Evidence committed to the branch is deleted first: only records this run writes are uploaded.
+        run: |
+          python -I - <<'PY'
+          import os
+          from atipspec.errors import AtipSpecError
+          from atipspec.project import Project
+          from atipspec.verify import clear_evidence, verify_delivery
+          project = Project.find()
+          clear_evidence(project)
+          failed = False
+          for slug in project.list_deliveries():
+              try:
+                  failed |= bool(verify_delivery(project, slug))
+              except AtipSpecError as exc:
+                  print(f"{slug}: {exc}")
+                  failed = True
+          records = any(project.deliveries.glob("*/evidence/*.json"))
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write(f"records={'true' if records else 'false'}\n")
+          raise SystemExit(1 if failed else 0)
+          PY
+      - uses: actions/upload-artifact@v4
+        id: upload
+        if: always() && steps.verify.outputs.records == 'true'
+        with:
+          # One name per attempt, as a re-run writes new records. Any job of the run, the caller's
+          # included, can replace an artifact of that name: attest takes this one by its ID.
+          name: atipspec-evidence-${{ github.run_attempt }}
+          path: .atipspec/deliveries/*/evidence/
+          include-hidden-files: true
+          retention-days: 30
+  attest:
+    # Runs no candidate command: it attests exactly the records produce wrote,
+    # after checking them against the head, and nothing the branch committed.
+    needs: produce
+    if: needs.produce.outputs.records == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install trusted verifier for the attestation
+        run: |
+          cd "$RUNNER_TEMP"
+          python -I -m pip install "$ATIPSPEC_PACKAGE"
+      - name: Clear committed evidence
+        run: |
+          python -I -c 'from atipspec.project import Project; from atipspec.verify import clear_evidence; clear_evidence(Project.find())'
+      - uses: actions/download-artifact@v4
+        with:
+          # By ID: an artifact replaced after produce uploaded it has another one, and the download
+          # fails. merge-multiple extracts it into path, as a download by name does.
+          artifact-ids: ${{ needs.produce.outputs.artifact-id }}
+          merge-multiple: true
+          path: .atipspec/deliveries
+      - name: Select this run's records
+        id: records
+        # Fails when a record is missing, extra, failed or written on another head or tree.
+        run: |
+          python -I - <<'PY'
+          import os
+          from atipspec.attestation import records_to_attest
+          from atipspec.project import Project
+          project = Project.find()
+          paths = [project.rel(path) for path in records_to_attest(project)]
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write("paths<<ATIPSPEC_PATHS\n" + "\n".join(paths) + "\nATIPSPEC_PATHS\n")
+          PY
+      - uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: ${{ steps.records.outputs.paths }}

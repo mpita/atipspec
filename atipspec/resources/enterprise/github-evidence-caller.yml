@@ -1,0 +1,21 @@
+# Provider mode. Copy to .github/workflows/atipspec-evidence.yml in each
+# candidate repository. It only calls the trusted evidence workflow
+# (github-evidence-trusted.yml) at one commit of the trusted repository: the
+# commit the trust policy pins as `[attestation] signer_digest`. Editing this
+# file in a pull request produces no evidence the gate accepts: a job added
+# here can replace the run's artifacts, but `attest` takes the one `produce`
+# uploaded by its ID, and the gate accepts only the records `attest` attested.
+# Verification must follow the spec and plan approvals: after they are given,
+# run this workflow again on the same head (Re-run all jobs).
+# Never switch it to pull_request_target, which would run the candidate's
+# commands with the base branch's permissions and secrets.
+name: AtipSpec evidence
+on: pull_request
+permissions: {}
+jobs:
+  evidence:
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    uses: your-organization/atipspec-trusted/.github/workflows/atipspec-evidence.yml@REPLACE_WITH_40_HEX_COMMIT

@@ -1,0 +1,45 @@
+# TEMPLATE ONLY, provider mode. Install OUTSIDE the candidate repository in an
+# administrator-controlled path and pin its SHA-256 in protected CI.
+#
+# Provider mode needs no human signing keys and no collector key: the protected
+# worker reads the pull request's approvals live with a read-only token, and the
+# CI evidence carries a GitHub artifact attestation verified with the pinned
+# `gh`. The attestation must come from the trusted evidence workflow, in a
+# separate repository, at the commit `signer_digest` pins. Risk exceptions
+# (deferring a blocker or major finding) are not available in this mode: fix
+# the finding, or use ssh mode.
+schema = 2
+version = "company-provider-1"
+mode = "provider"
+repository = "your-organization/your-repository"
+contract_rules = ['require-command "python -m unittest discover"']
+# Gate minimums for every delivery checked under this policy; config.yaml can
+# add them but never lift them. Uncomment to impose them.
+# require_proof = true             # each criterion under Tests names its JUnit test in Proof
+# require_isolated_review = true   # a review from a shared session is an error
+# The branch whose history counts as integrated: what a delivery's branch takes
+# in from it is not that delivery's change in check. teams.json cannot set it
+# under a policy. Uncomment, with the full ref name the protected worker fetches.
+# integration = "refs/remotes/origin/main"
+
+[provider]
+kind = "github"                   # provider mode is GitHub-only (artifact attestations); GitLab uses ssh mode
+api_url = "https://api.github.com"
+repository = "your-organization/your-repository"
+
+[provider.roles]
+product = ["product-owner-login"]
+engineering = ["architect-login"]
+qa = ["qa-login"]
+
+[attestation]
+tool = "gh"                       # or the absolute path of the pinned binary on the protected worker
+# github-evidence-trusted.yml, copied to a repository of the same organization
+# that only administrators change, and the full SHA of the commit the candidate
+# repositories call it at (github-evidence-caller.yml). Change both together
+# when that workflow changes. The placeholder does not load, on purpose.
+signer_workflow = "your-organization/atipspec-trusted/.github/workflows/atipspec-evidence.yml"
+signer_digest = "REPLACE_WITH_40_HEX_COMMIT"
+# Evidence from self-hosted runners is refused. Uncomment only if the trusted
+# workflow runs on self-hosted runners your organization controls.
+# allow_self_hosted_runners = true

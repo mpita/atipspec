@@ -1,0 +1,201 @@
+"""Create deliveries, decisions and initiatives from the templates."""
+from __future__ import annotations
+
+from datetime import date, datetime, timezone
+from pathlib import Path
+import re
+
+from . import frontmatter
+from .delivery import FEATURE_SECTIONS, HEADING2, parse_roadmap
+from .errors import AtipSpecError
+from .project import Project, template, validate_slug
+
+
+def _from_template(name: str, meta_updates: dict, replacements: dict[str, str]) -> str:
+    meta, body = frontmatter.split(template(name))
+    meta.update(meta_updates)
+    for key, value in replacements.items():
+        body = body.replace("{{" + key + "}}", value)
+    return frontmatter.compose(meta, body)
+
+
+KINDS = ("feature", "fix")
+
+
+def required_verify(project: Project) -> str:
+    """The contract's required commands as Verify list items, then a
+    placeholder for the command that runs the regression test."""
+    from .check import load_contract
+    commands = [f"- `{rule.args[0]}`" for rule in load_contract(project).of("require-command")]
+    return "\n".join(commands + ["- `<!-- the test command that reproduces the defect, red then green -->`"])
+
+
+def _require_committed_spec(project: Project, capability: str) -> None:
+    """A delivery compares its capability's living spec with its base commit,
+    the head `new` records, so a change to that spec not committed yet would
+    count as the delivery's own."""
+    git = project.git
+    if not git.available or git.head() is None:
+        return
+    rel = f".atipspec/specs/{capability}.md"
+    if git.run("status", "--porcelain", "-z", "--untracked-files=all", "--", f":(literal){rel}").strip("\0"):
+        raise AtipSpecError(f"{rel} has changes that are not committed: the delivery compares the living spec with "
+                            "the commit it starts from, so they would count as its own change, and committed "
+                            "outside a delivery, merge-check blocks them. Discard them; or, to make them in this "
+                            "delivery, set them aside, discard them, run `atipspec new` again and write them back "
+                            "in the delivery")
+
+
+def new_delivery(project: Project, slug: str, title: str, *, capability: str | None = None,
+                 impact: list[str] | None = None, owner: str | None = None, ticket: str | None = None,
+                 initiative: str | None = None, branch: bool = False, worktree: bool = False,
+                 kind: str = "feature", branch_name: str | None = None,
+                 reuse_branch: bool = False, depends_on: list[str] | None = None) -> Path:
+    validate_slug(slug)
+    if slug == "contract":
+        raise AtipSpecError("`contract` is reserved for `atipspec proposal contract` and `atipspec accept contract`; "
+                            "choose another slug")
+    if kind not in KINDS:
+        raise AtipSpecError(f"Unknown kind {kind!r}: use feature or fix")
+    if ticket is not None:
+        from .tickets import validate
+        ticket = validate(ticket)
+    if capability:
+        validate_slug(capability, "capability")
+    for name in impact or []:
+        validate_slug(name, "impact entry")
+    for name in depends_on or []:
+        validate_slug(name, "dependency")
+        if name == slug:
+            raise AtipSpecError("A delivery cannot depend on itself")
+    if (branch_name or reuse_branch) and not (branch or worktree):
+        raise AtipSpecError("--branch-name and --reuse-branch need --branch or --worktree; omit them to keep the current branch")
+    if reuse_branch and not branch_name:
+        raise AtipSpecError("--reuse-branch needs an explicit --branch-name")
+    if initiative and not (project.initiatives / initiative / "roadmap.md").is_file():
+        raise AtipSpecError(f"Initiative not found: {initiative}. Create it with `atipspec initiative {initiative} --title ...`")
+    if (project.deliveries / slug).exists() or (project.archive / slug).exists():
+        raise AtipSpecError(f"A delivery named {slug} already exists.")
+    if not worktree:
+        _require_committed_spec(project, capability or slug)
+    root = project.root
+    if branch or worktree:
+        if not project.git.available:
+            raise AtipSpecError("--branch and --worktree need a git repository.")
+        name = branch_name or f"delivery/{slug}"
+        if name.startswith("-"):
+            raise AtipSpecError("Invalid branch name")
+        project.git.run("check-ref-format", "--branch", name)
+        if reuse_branch and not project.git.rev_exists(f"refs/heads/{name}"):
+            raise AtipSpecError(f"Existing local branch not found: {name}")
+        source_ref = f"refs/heads/{name}" if reuse_branch else "HEAD"
+        if worktree or reuse_branch:
+            if not project.git.exists_at(source_ref, ".atipspec/config.yaml"):
+                raise AtipSpecError("The target revision has no committed ATIPSpec configuration; initialize it or use the current checkout before creating an isolated delivery")
+            for path in (f".atipspec/deliveries/{slug}/spec.md", f".atipspec/archive/{slug}/spec.md"):
+                if project.git.exists_at(source_ref, path):
+                    raise AtipSpecError(f"The target revision already contains delivery {slug}")
+            if initiative and not project.git.exists_at(source_ref, f".atipspec/initiatives/{initiative}/roadmap.md"):
+                raise AtipSpecError("The initiative is not present in the target revision")
+        if worktree:
+            root = project.root.parent / f"{project.root.name}-{slug}"
+            if root.exists():
+                raise AtipSpecError(f"{root} already exists.")
+            if reuse_branch:
+                project.git.run("worktree", "add", str(root), name)
+            else:
+                project.git.add_worktree(root, name)
+        else:
+            if reuse_branch:
+                project.git.run("switch", name)
+            else:
+                project.git.create_branch(name)
+        project = Project.find(root)
+    base = project.git.head() if project.git.available else None
+    directory = root / ".atipspec" / "deliveries" / slug
+    replacements = {"title": title, "slug": slug, "verify": required_verify(project)}
+    prefix = "fix-" if kind == "fix" else ""
+    meta = {"title": title, "status": "draft", "capability": capability or slug, "impact": list(impact or []),
+            "owner": owner, "ticket": ticket, "initiative": initiative, "base": base,
+            "created": datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")}
+    if depends_on:
+        meta["depends_on"] = list(dict.fromkeys(depends_on))
+    import json
+    from uuid import uuid4
+    from .specs import baseline
+    meta.update({"schema": 2, "change_id": uuid4().hex, "requirements": [], "risk": "normal"})
+    if kind == "fix":
+        # The defect stays in the delivery; the living spec gets the corrected requirement.
+        spec_text = _from_template("fix-spec.md", {**meta, "kind": "fix"}, replacements)
+        sections = ["defect"]
+    else:
+        # The requirements live in specs/<capability>.md; spec.md holds what the change decides around them.
+        spec_text = _from_template("spec.md", meta, replacements)
+        sections = list(FEATURE_SECTIONS)
+    files = {
+        "spec.md": spec_text,
+        "plan.md": _from_template(f"{prefix}plan.md", {"title": title}, replacements),
+        "deferred.md": _from_template("deferred.md", {"title": title}, replacements),
+        "baseline.json": json.dumps({**baseline(project, capability or slug), "sections": sections},
+                                    ensure_ascii=False, indent=2) + "\n",
+    }
+    directory.mkdir(parents=True)
+    for name, content in files.items():
+        (directory / name).write_text(content, encoding="utf-8", newline="\n")
+    if initiative:
+        register_in_roadmap(root / ".atipspec" / "initiatives" / initiative / "roadmap.md", slug, title)
+    return directory
+
+
+def register_in_roadmap(path: Path, slug: str, title: str) -> bool:
+    """Add `- slug: title` under the roadmap's Deliveries section unless listed."""
+    if not path.is_file():
+        return False
+    text = path.read_text(encoding="utf-8")
+    if slug in {item for item, _ in parse_roadmap(text).deliveries}:
+        return False
+    lines = text.splitlines()
+    start = next((index for index, line in enumerate(lines)
+                  if (match := HEADING2.match(line)) and match.group(1).lower().startswith("deliver")), None)
+    if start is None:
+        lines += ["", "## Deliveries", "", f"- {slug}: {title}"]
+    else:
+        end = next((index for index in range(start + 1, len(lines)) if HEADING2.match(lines[index])), len(lines))
+        while end > start + 1 and not lines[end - 1].strip():
+            end -= 1
+        lines.insert(end, f"- {slug}: {title}")
+        if end == start + 1:
+            lines.insert(end, "")
+    path.write_text("\n".join(lines).rstrip("\n") + "\n", encoding="utf-8", newline="\n")
+    return True
+
+
+def next_decision_id(project: Project) -> str:
+    numbers = [int(match.group(1)) for path in project.list_decisions()
+               if (match := re.match(r"DEC-(\d+)", path.name))]
+    return f"DEC-{max(numbers, default=0) + 1:03d}"
+
+
+def new_decision(project: Project, slug: str, title: str, affects: list[str] | None = None) -> Path:
+    validate_slug(slug)
+    project.decisions.mkdir(parents=True, exist_ok=True)
+    ident = next_decision_id(project)
+    path = project.decisions / f"{ident}-{slug}.md"
+    content = _from_template("decision.md", {
+        "id": ident, "title": title, "status": "proposed", "affects": list(affects or []),
+        "supersedes": None, "date": date.today().isoformat()}, {"title": title, "id": ident})
+    path.write_text(content, encoding="utf-8", newline="\n")
+    return path
+
+
+def new_initiative(project: Project, slug: str, title: str) -> Path:
+    validate_slug(slug)
+    directory = project.initiatives / slug
+    if directory.exists():
+        raise AtipSpecError(f"An initiative named {slug} already exists.")
+    directory.mkdir(parents=True)
+    path = directory / "roadmap.md"
+    path.write_text(_from_template("roadmap.md", {"title": title, "status": "active",
+                                                  "created": date.today().isoformat()},
+                                   {"title": title, "slug": slug}), encoding="utf-8", newline="\n")
+    return path

@@ -1,0 +1,32 @@
+# Python caches and build artifacts
+site/
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.eggs/
+
+# Local environments and test tooling
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Local credentials and machine-specific configuration
+.env
+.env.*
+!.env.example
+.claude/settings.local.json
+
+
+# OS/editor temporary files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
