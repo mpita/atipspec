@@ -6,8 +6,8 @@ It never accepts the proposal or the result, and never commits, pushes, merges
 or deploys. It runs guided deliveries only, and refuses under an external
 trust policy, selected or required.
 
-The process runner needs a POSIX system for its checkout lock: Linux, macOS or
-WSL. Elsewhere `run` refuses before it reads the delivery or writes anything;
+The process runner needs a POSIX system to stop an adapter's processes: Linux,
+macOS or WSL. Elsewhere `run` refuses before it reads the delivery or writes anything;
 continue the delivery in the guided conversation, which has the same phases
 and the same gate. The runner is a foreground process with checkpoints, not an
 installed background service. A supervisor can launch it, but AtipSpec does not

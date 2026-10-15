@@ -17,7 +17,7 @@ Linux, macOS e Windows; a CI executa a suíte de testes no Linux e no
 Windows, cuja página de código não é UTF-8. No Windows:
 
 - `atipspec run`, o executor de processos opcional, precisa de um sistema
-  POSIX (Linux, macOS ou WSL) para o bloqueio do checkout. A conversa guiada
+  POSIX (Linux, macOS ou WSL) para encerrar os processos de um adaptador. A conversa guiada
   no seu cliente funciona em qualquer lugar, com as mesmas fases e o mesmo
   portão.
 - Os comandos de Verify do plano rodam no shell da plataforma, `cmd.exe` no

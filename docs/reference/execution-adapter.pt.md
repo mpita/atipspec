@@ -7,8 +7,8 @@ resultado, e nunca faz commit, push, merge ou deploy. Executa apenas entregas
 guiadas, e recusa sob uma política de confiança externa, selecionada ou
 exigida.
 
-O executor de processo precisa de um sistema POSIX para sua trava de
-checkout: Linux, macOS ou WSL. Em outros sistemas, `run` recusa antes de ler
+O executor de processo precisa de um sistema POSIX para encerrar os processos
+de um adaptador: Linux, macOS ou WSL. Em outros sistemas, `run` recusa antes de ler
 a entrega ou escrever qualquer coisa; continue a entrega na conversa guiada,
 que tem as mesmas fases e o mesmo portão. O executor é um processo em
 primeiro plano com checkpoints, não um serviço instalado em segundo plano.

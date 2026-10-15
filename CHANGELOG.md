@@ -502,10 +502,13 @@
   writes UTF-8 whatever the code page, so a spec with `→` no longer ends in an
   encoding error. Evidence and the receipt record paths with `/`. A plan's
   `Report` is refused on every platform when Windows reads it as absolute or
-  outside the project (`/x`, `C:\x`, `..\x`). Outside POSIX, `atipspec run`
-  refuses before it reads the delivery or writes anything and says to use
-  Linux, macOS or WSL, or the guided conversation. CI runs the suite and the
-  smoke test on `windows-latest` with Python 3.11 and 3.13, and on Linux the
+  outside the project (`/x`, `C:\x`, `..\x`). The checkout lock that
+  `migrate --apply` takes works on Windows too. Outside POSIX, `atipspec run`,
+  which stops an adapter by its process group, refuses before it reads the
+  delivery or writes anything and says to use Linux, macOS or WSL, or the
+  guided conversation. CI runs the suite (one process per test module, as each
+  git and Python process starts slowly there) and the smoke test on
+  `windows-latest` with Python 3.11 and 3.13, and on Linux the
   suite again with text written as Windows writes it, CRLF where no newline is
   named (`python -m tests.windows_text`). On every platform the suite's
   repositories check text out with CRLF, as Git for Windows does by default.

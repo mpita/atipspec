@@ -17,7 +17,7 @@ Linux, macOS y Windows; la CI ejecuta la batería de tests en Linux y en
 Windows, cuya página de códigos no es UTF-8. En Windows:
 
 - `atipspec run`, el ejecutor de procesos opcional, necesita un sistema
-  POSIX (Linux, macOS o WSL) para el bloqueo de su checkout. La conversación
+  POSIX (Linux, macOS o WSL) para detener los procesos de un adaptador. La conversación
   guiada en tu cliente funciona en todas partes, con las mismas fases y la
   misma puerta.
 - Los comandos Verify del plan se ejecutan en el shell de la plataforma,

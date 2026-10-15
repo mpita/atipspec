@@ -7,8 +7,8 @@ resultado, y nunca hace commit, push, merge ni despliegue. Solo ejecuta
 entregas guiadas, y se niega bajo una policy de confianza externa, tanto si
 está seleccionada como si es obligatoria.
 
-El runner de procesos necesita un sistema POSIX para su bloqueo del checkout:
-Linux, macOS o WSL. En cualquier otro sistema, `run` se niega antes de leer la
+El runner de procesos necesita un sistema POSIX para detener los procesos de un
+adaptador: Linux, macOS o WSL. En cualquier otro sistema, `run` se niega antes de leer la
 entrega o de escribir nada; continúa la entrega en la conversación guiada, que
 tiene las mismas fases y la misma puerta. El runner es un proceso en primer
 plano con checkpoints, no un servicio instalado en segundo plano. Un

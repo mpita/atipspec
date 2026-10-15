@@ -889,7 +889,7 @@ class FailClosedTests(GuidedSteps, ProjectCase):
         self.addCleanup(temporary.cleanup)
         copy = Path(temporary.name).resolve() / "copy"
         shutil.copytree(self.root, copy, ignore=shutil.ignore_patterns(".git"))
-        os.chdir(copy)
+        self.enterContext(contextlib.chdir(copy))   # left before the copy is removed, as Windows requires
         code, out, _ = self.run_cli("check", "password-reset")
         self.assertEqual(code, 1, out)
         self.assertIn("git is required", out)
@@ -1384,7 +1384,10 @@ class RequiredTrustTests(TrustedCase):
         self.commit("archive")
         code, out, _ = self.policy_check()
         self.assertEqual(code, 1, out)
-        self.assertIn("links the delivery's folder elsewhere", out)
+        # Where git cannot make links (Git for Windows by default) it checks the link out as a file: the
+        # receipt is refused for that instead.
+        links = self.git("config", "--type=bool", "--default", "true", "core.symlinks").strip() == "true"
+        self.assertIn("links the delivery's folder elsewhere" if links else "has no active delivery fake", out)
         self.assertEqual(sorted(path.name for path in (outside / "evidence").iterdir()), ["keep.txt"])
 
     def test_provider_mode_checks_an_archived_delivery_through_the_pull_request(self):

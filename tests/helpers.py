@@ -9,6 +9,7 @@ import os
 from pathlib import Path
 import re
 import shutil
+import stat
 import subprocess
 import sys
 import tempfile
@@ -28,6 +29,18 @@ if os.name == "nt":
     # cmd.exe runs the Verify commands there, and has no true, false or python3.
     for name, body in (("true", "@exit /b 0"), ("false", "@exit /b 1"), ("python3", f'@"{sys.executable}" %*')):
         (SUPPORT / f"{name}.cmd").write_text(body + "\n", encoding="utf-8")
+
+
+def remove_tree(path: Path) -> None:
+    """shutil.rmtree that also removes read-only files: git leaves its objects
+    read-only, and Windows refuses to delete those."""
+    def writable(function, name, _):
+        os.chmod(name, stat.S_IWRITE)
+        function(name)
+    if sys.version_info >= (3, 12):
+        shutil.rmtree(path, onexc=writable)
+    else:
+        shutil.rmtree(path, onerror=writable)
 
 
 def python_command(code: str) -> str:

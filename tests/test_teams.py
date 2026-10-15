@@ -11,7 +11,7 @@ from atipspec.context import build_context, render_context
 from atipspec.project import Project
 from atipspec.teams import board, conflicts, pin_contract, read_contracts, dependencies
 from atipspec.errors import AtipSpecError
-from tests.helpers import ProjectCase
+from tests.helpers import ProjectCase, remove_tree
 from tests.trust_helpers import TrustedCase
 
 
@@ -241,7 +241,7 @@ class TeamTests(ProjectCase):
 
     def test_system_unavailable_warns_and_gate_names_the_command(self):
         system, _ = self.system_repository(glossary=False)
-        shutil.rmtree(system)
+        remove_tree(system)
         code, out, err = self.run_cli("new", "frontend", "--title", "Frontend", "--capability", "auth")
         self.assertEqual(code, 0, out + err)
         self.assertIn("warning: the system repository is not available", out)

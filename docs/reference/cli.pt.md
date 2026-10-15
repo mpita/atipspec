@@ -813,7 +813,7 @@ pede contam como `atipspec review` as conta, e ele para em `needs_decision` quan
 de agente interrompida. Sai com 0 quando o estado é `ready_for_acceptance` ou
 `accepted`, e com 2 para qualquer outro estado. Recusa uma entrega antiga e,
 com uma política de confiança, selecionada ou exigida. O executor precisa de
-um sistema POSIX (Linux, macOS ou WSL) para sua trava de checkout; em outros
+um sistema POSIX (Linux, macOS ou WSL) para encerrar os processos de um adaptador; em outros
 sistemas, recusa antes de ler a entrega ou escrever qualquer coisa, e a
 entrega continua na conversa guiada, que tem as mesmas fases e o mesmo
 portão.

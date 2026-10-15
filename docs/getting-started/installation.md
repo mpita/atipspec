@@ -17,7 +17,7 @@ Linux, macOS and Windows; CI runs the test suite on Linux and on Windows,
 whose code page is not UTF-8. On Windows:
 
 - `atipspec run`, the optional process runner, needs a POSIX system (Linux,
-  macOS or WSL) for its checkout lock. The guided conversation in your client
+  macOS or WSL) to stop an adapter's processes. The guided conversation in your client
   works everywhere, with the same phases and gate.
 - The plan's Verify commands run in the platform's shell, `cmd.exe` on
   Windows. Write commands both shells accept, such as `python -m pytest`, or

@@ -30,7 +30,7 @@ print(json.dumps(response))
 '''
 
 
-@unittest.skipUnless(os.name == "posix", "the runner's checkout lock is an fcntl lock, POSIX only")
+@unittest.skipUnless(os.name == "posix", "the runner stops an adapter by its process group, POSIX only")
 class RunnerTests(ProjectCase):
     def prepare(self, adapter=ADAPTER, verification=None, isolated=True, risk="normal"):
         self.new_delivery()

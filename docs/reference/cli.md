@@ -782,7 +782,7 @@ resolved a reported decision or failure; `--retry-interrupted` retries after
 you inspected an interrupted agent mutation. Exit 0 when the state is
 `ready_for_acceptance` or `accepted`, 2 for any other state. It refuses a
 legacy delivery, and with a trust policy, selected or required. The runner
-needs a POSIX system (Linux, macOS or WSL) for its checkout lock; elsewhere it
+needs a POSIX system (Linux, macOS or WSL) to stop an adapter's processes; elsewhere it
 refuses before it reads the delivery or writes anything, and the delivery
 continues in the guided conversation, which has the same phases and the same
 gate.

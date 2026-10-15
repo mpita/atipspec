@@ -836,7 +836,7 @@ inspeccionaras una mutación interrumpida de un agente. Sale con 0 cuando el
 estado es `ready_for_acceptance` o `accepted`, y con 2 en cualquier otro
 estado. Rechaza las entregas antiguas, y se niega con una policy de
 confianza, tanto seleccionada como obligatoria. El runner necesita un
-sistema POSIX (Linux, macOS o WSL) para su bloqueo del checkout; en otros
+sistema POSIX (Linux, macOS o WSL) para detener los procesos de un adaptador; en otros
 sistemas se niega antes de leer la entrega o de escribir nada, y la entrega
 continúa en la conversación guiada, que tiene las mismas fases y la misma
 puerta.

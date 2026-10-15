@@ -27,9 +27,9 @@ from .trust import SUBJECT_VERSION, read_regular, subject, timestamp
 
 STATES = ("draft", "awaiting_approval", "approved", "running", "ready_for_acceptance",
           "accepted", "needs_decision", "blocked", "failed")
-POSIX = os.name == "posix"   # the checkout lock is an fcntl lock
-UNSUPPORTED = ("`atipspec run` needs a POSIX system for its checkout lock: Linux, macOS or WSL. On this platform "
-               "continue the delivery in the guided conversation, which has the same phases and the same gate")
+POSIX = os.name == "posix"   # the runner stops an adapter by its process group
+UNSUPPORTED = ("`atipspec run` needs a POSIX system to stop an adapter's processes: Linux, macOS or WSL. On this "
+               "platform continue the delivery in the guided conversation, which has the same phases and the same gate")
 
 
 def read_state(project, slug):
@@ -62,22 +62,29 @@ def _write(project, slug, state):
 @contextmanager
 def _lock(project):
     """One writer for this checkout. The OS releases the lock on process exit."""
-    if not POSIX:
-        raise AtipSpecError(UNSUPPORTED)
-    import fcntl
     project.tmp.mkdir(parents=True, exist_ok=True)
     path = project.tmp / "runner.lock"
     if any(part.is_symlink() for part in (path, *path.parents)):
         raise AtipSpecError("Refusing a symlinked runner lock")
     with path.open("a+", encoding="utf-8", newline="\n") as handle:
+        if POSIX:
+            import fcntl
+            lock, unlock = (lambda: fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB),
+                            lambda: fcntl.flock(handle, fcntl.LOCK_UN))
+        else:
+            import msvcrt   # locks the first byte, which need not exist
+            lock, unlock = (lambda: (handle.seek(0), msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)),
+                            lambda: (handle.seek(0), msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)))
         try:
-            fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        except BlockingIOError as exc:
+            lock()
+        except OSError as exc:   # flock says BlockingIOError; msvcrt.locking, an OSError
+            if POSIX and not isinstance(exc, BlockingIOError):
+                raise
             raise AtipSpecError("Another runner owns this checkout; use an independent worktree for parallel work") from exc
         try:
             yield
         finally:
-            fcntl.flock(handle, fcntl.LOCK_UN)
+            unlock()
 
 
 def run_delivery(project, slug, *, resume=False, retry_interrupted=False, budget=900, timeout=300, max_rounds=None):
