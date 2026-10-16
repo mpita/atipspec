@@ -77,7 +77,7 @@ and installs one skill per phase where each client discovers them.
 ```text
   ▄▀█ ▀█▀ █ █▀█ █▀ █▀█ █▀▀ █▀▀
   █▀█  █  █ █▀▀ ▄█ █▀▀ ██▄ █▄▄
-  spec-driven delivery with a deterministic gate · v0.3.0
+  spec-driven delivery with a deterministic gate · v0.3.1
 
 ┌  New project
 │

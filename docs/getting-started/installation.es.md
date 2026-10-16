@@ -80,7 +80,7 @@ fase donde cada cliente los descubre.
 ```text
   ▄▀█ ▀█▀ █ █▀█ █▀ █▀█ █▀▀ █▀▀
   █▀█  █  █ █▀▀ ▄█ █▀▀ ██▄ █▄▄
-  spec-driven delivery with a deterministic gate · v0.3.0
+  spec-driven delivery with a deterministic gate · v0.3.1
 
 ┌  New project
 │

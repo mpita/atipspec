@@ -1,5 +1,23 @@
 # Release history
 
+## 0.3.1 — Windows
+
+- `atipspec migrate --apply` works on Windows: it takes the checkout lock with
+  `msvcrt` there instead of refusing. `atipspec run` stays POSIX only, since
+  it stops an adapter by its process group, and its message and the
+  documentation now give that reason.
+- CI runs the suite and the smoke test green on `windows-latest` with Python
+  3.11 and 3.13. There each test module runs in its own process
+  (`scripts/run_tests.py`), as every git and Python process starts slowly on
+  Windows, and the job has 45 minutes.
+- Tests that assumed Linux: a git repository with read-only objects is
+  removed through a helper, a test leaves its temporary checkout before
+  removing it, and where git checks a link out as a plain file (Git for
+  Windows by default) the archived receipt is expected to be refused for
+  that.
+- The trusted evidence workflow template pins `atipspec==0.3.1`. Projects need
+  no update: the framework and the skills are those of 0.3.0.
+
 ## 0.3.0 — Human approval, a gate that fails closed and coherent documentation
 
 - Human approval without self-approval. `atipspec proposal <slug>`,
@@ -502,13 +520,10 @@
   writes UTF-8 whatever the code page, so a spec with `→` no longer ends in an
   encoding error. Evidence and the receipt record paths with `/`. A plan's
   `Report` is refused on every platform when Windows reads it as absolute or
-  outside the project (`/x`, `C:\x`, `..\x`). The checkout lock that
-  `migrate --apply` takes works on Windows too. Outside POSIX, `atipspec run`,
-  which stops an adapter by its process group, refuses before it reads the
-  delivery or writes anything and says to use Linux, macOS or WSL, or the
-  guided conversation. CI runs the suite (one process per test module, as each
-  git and Python process starts slowly there) and the smoke test on
-  `windows-latest` with Python 3.11 and 3.13, and on Linux the
+  outside the project (`/x`, `C:\x`, `..\x`). Outside POSIX, `atipspec run`
+  refuses before it reads the delivery or writes anything and says to use
+  Linux, macOS or WSL, or the guided conversation. CI runs the suite and the
+  smoke test on `windows-latest` with Python 3.11 and 3.13, and on Linux the
   suite again with text written as Windows writes it, CRLF where no newline is
   named (`python -m tests.windows_text`). On every platform the suite's
   repositories check text out with CRLF, as Git for Windows does by default.
